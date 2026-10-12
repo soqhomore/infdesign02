@@ -2,7 +2,7 @@
 // 시작 시각(startAt)은 제안 메시지에 담아 Broadcast로 공유한다.
 // 멍때리기: 준비 3초 뒤부터 입력이 감지되면 기절(Broadcast), 마지막 한 마리가 승리
 // 창 닦기: wipe.js
-import { startWipe, onWipeMessage } from './wipe.js'
+import { startWipe, onWipeMessage, onWipePresence } from './wipe.js'
 
 export const GAMES = {
   zone: '멍때리기',
@@ -112,7 +112,7 @@ export function onGameMessage(msg) {
   } else if (msg.type === 'faint') {
     if (!current || current.gameId !== msg.gameId || current.phase !== 'playing') return
     faint(msg.id, msg.at)
-  } else if (msg.type === 'wipe' || msg.type === 'wipe-done') {
+  } else if (msg.type === 'wipe' || msg.type === 'wipe-done' || msg.type === 'wipe-leave') {
     if (!current || current.gameId !== msg.gameId) return
     onWipeMessage(msg)
   }
@@ -127,6 +127,7 @@ export function onPresence(presentIds) {
     if (current.phase === 'invite') current.players.delete(id)
     else if (current.game === 'zone' && current.phase === 'playing') faint(id, Date.now())
   }
+  if (current.game === 'wipe' && current.phase === 'playing') onWipePresence(presentIds)
   render()
 }
 
@@ -150,7 +151,8 @@ function update() {
         gameId: current.gameId,
         startAt: current.startAt,
         joined: current.joined,
-        playerCount: current.players.size,
+        players: [...current.players.keys()],
+        meId: me.id,
         send,
         onFinish: clear,
       })

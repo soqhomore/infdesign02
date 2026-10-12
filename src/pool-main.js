@@ -3,6 +3,10 @@
 import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, setNight, HUES, swatchColor } from './pool.js'
 import { connect, sendChat, sendGame, updatePresence } from './realtime.js'
 import { initGame, onGameMessage, onPresence } from './game.js'
+import { configureWipe } from './wipe.js'
+
+// 창 닦기: 아쿠아리움 관람실 모양, 시간 제한 없음
+configureWipe({ aquarium: true, timed: false })
 
 const $ = (sel) => document.querySelector(sel)
 const layer = $('#tank') // 이름표·말풍선이 들어가는 곳

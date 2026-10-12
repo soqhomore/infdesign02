@@ -316,6 +316,26 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .wipe-fog { opacity: 0.94; cursor: grab; transition: opacity 1.2s ease-out; }
 .wipe-fog:active { cursor: grabbing; }
 .wipe-stage.clear .wipe-fog { opacity: 0; }
+/* 도트판: 관람실 실루엣만 그리고 창은 뚫려 있어서 뒤의 수조(셰이더)가 보임 */
+.wipe-stage.aquarium { background: transparent; }
+.wipe-stage.aquarium .wipe-scene {
+  width: auto;
+  height: auto;
+  z-index: 1; /* 난간·관람객은 유리 앞(방 쪽)이라 김 위에 */
+  pointer-events: none; /* 문지르기는 아래 김 캔버스가 받음 */
+}
+.wipe-leave {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 20px;
+  background: var(--pill);
+  color: var(--on-pill);
+}
 
 /* ---------- 우상단 설정 ---------- */
 .settings-btn {
