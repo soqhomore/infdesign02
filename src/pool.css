@@ -1,0 +1,318 @@
+/* 도트 수조판: 검은 알약 UI (Figma 시계 캡슐 스타일) */
+@font-face {
+  font-family: 'EF_cucumbersalad';
+  src: url('/fonts/EF_cucumbersalad.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  --black: #000;
+  --white: #fff;
+  --muted: rgba(255, 255, 255, 0.55);
+  --font: 'EF_cucumbersalad', sans-serif;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #021d55;
+  font-family: var(--font);
+  color: var(--white);
+}
+.hidden { display: none !important; }
+
+#pool {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+/* 공통 버튼·입력 */
+button, input {
+  font: inherit;
+  font-size: 20px;
+  border: none;
+  outline: none;
+}
+button { cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.light { background: var(--white); color: var(--black); border-radius: 20px; padding: 10px 18px; }
+button.light:hover { background: #e7e7e7; }
+button.outline {
+  background: transparent;
+  color: var(--white);
+  border-radius: 20px;
+  padding: 10px 18px;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+}
+button.outline:hover { background: rgba(255, 255, 255, 0.12); }
+button.ghost { background: transparent; color: var(--muted); padding: 8px; }
+
+/* 검은 카드 (배너·진행 상황·게임 고르기) */
+.card {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 14px 20px;
+  border-radius: 24px;
+  background: var(--black);
+}
+
+/* ---------- 위: 시계 캡슐 (Figma 90:63) ---------- */
+.hud {
+  position: fixed;
+  top: 24px;
+  left: 0;
+  right: 0;
+  height: 88px;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+}
+.topbar {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 392px;
+  height: 88px;
+  transform: translateX(-50%);
+}
+.pill {
+  position: absolute;
+  top: 26px;
+  width: 115px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--black);
+  font-size: 20px;
+  overflow: hidden;
+}
+.pill.uptime { left: 0; border-radius: 20px 0 0 20px; letter-spacing: -0.5px; }
+.pill.name { left: 277px; border-radius: 0 20px 20px 0; }
+.clock {
+  position: absolute;
+  left: calc(50% - 1.5px);
+  top: 50%;
+  width: 185px;
+  height: 88px;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 40px;
+  background: var(--black);
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  overflow: hidden;
+}
+.clock p { margin: 0; }
+
+/* ---------- 개복치 이름표·말풍선 ---------- */
+.tank { position: fixed; inset: 0; pointer-events: none; }
+.fish-label {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: var(--black);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.fish-label.me { background: var(--white); color: var(--black); }
+.fish-label.fainted::after { content: ' · 기절'; }
+.bubble {
+  position: absolute;
+  max-width: 240px;
+  width: max-content;
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: var(--black);
+  font-size: 18px;
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+  transform: translate(-50%, -100%);
+}
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  border: 8px solid transparent;
+  border-top-color: var(--black);
+  transform: translateX(-50%);
+}
+
+/* ---------- 아래: 채팅 ---------- */
+.chat {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px));
+  display: flex;
+  gap: 4px;
+}
+.chat input, .chat button {
+  height: 44px;
+  box-sizing: border-box;
+  background: var(--black);
+  color: var(--white);
+}
+.chat input { flex: 1; min-width: 0; padding: 0 20px; border-radius: 20px 0 0 20px; }
+.chat input::placeholder { color: rgba(255, 255, 255, 0.45); }
+.chat input:focus { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3); }
+.chat button { padding: 0 18px; white-space: nowrap; }
+.chat button:hover:not(:disabled) { background: #222; }
+.chat .game-btn { border-radius: 0 20px 20px 0; display: flex; align-items: center; gap: 8px; }
+.game-btn i { width: 8px; height: 8px; border-radius: 50%; background: #ff8fb1; }
+
+.status {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ---------- 입장 ---------- */
+.enter {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 15, 51, 0.45);
+}
+.enter-card {
+  width: min(360px, 100%);
+  box-sizing: border-box;
+  padding: 32px 28px;
+  border-radius: 40px;
+  background: var(--black);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.enter-card h1 { margin: 0; font-weight: normal; font-size: 44px; letter-spacing: -2px; }
+.enter-card p { margin: 0 0 8px; color: var(--muted); font-size: 16px; }
+.enter-card input {
+  padding: 12px 18px;
+  border-radius: 20px;
+  background: #1a1a1a;
+  color: var(--white);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+}
+.enter-card input:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+
+/* ---------- 게임 고르기 ---------- */
+.game-picker {
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(300px, calc(100% - 32px));
+}
+.game-picker p { margin: 0 0 4px; text-align: center; font-size: 18px; }
+
+/* ---------- 게임 제안 배너 · 진행 상황 ---------- */
+.game-banner, .zone-hud { top: 124px; }
+.game-banner-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.game-banner strong { display: block; font-weight: normal; font-size: 20px; }
+.game-banner small, .zone-hud small { color: var(--muted); font-size: 14px; }
+.game-banner button { padding: 8px 18px; }
+.game-joined { white-space: nowrap; }
+.game-banner-track {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.game-banner-bar { height: 100%; background: var(--white); transform-origin: left; }
+
+.zone-hud { text-align: center; pointer-events: none; }
+.zone-hud-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.zone-hud strong { font-weight: normal; font-size: 18px; }
+.zone-hud-time { font-size: 32px; letter-spacing: -1.6px; }
+.zone-hud small { display: block; margin-top: 4px; }
+
+/* ---------- 결과 ---------- */
+.game-result {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 32px);
+  padding: 22px 36px;
+  border-radius: 40px;
+  background: var(--black);
+  text-align: center;
+  pointer-events: none;
+}
+.game-result strong { font-weight: normal; font-size: 34px; letter-spacing: -1px; }
+
+/* ---------- 김 서린 창 닦기 ---------- */
+.wipe-stage {
+  position: fixed;
+  inset: 0;
+  background: #7f9ed6;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.wipe-scene, .wipe-fog { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wipe-scene { image-rendering: pixelated; }
+.wipe-fog { opacity: 0.94; cursor: grab; transition: opacity 1.2s ease-out; }
+.wipe-fog:active { cursor: grabbing; }
+.wipe-stage.clear .wipe-fog { opacity: 0; }
+
+/* ---------- 물 설정 패널 ---------- */
+.panel {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #cfeeff;
+  font: 12px/1.5 ui-monospace, Menlo, monospace;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 10px;
+  align-items: center;
+  user-select: none;
+}
+.panel.hidden { display: grid !important; }
+.panel.hidden > :not(.toggle) { display: none; }
+.panel input[type='range'] { width: 110px; }
+.toggle { grid-column: 1 / -1; cursor: pointer; opacity: 0.8; }
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 760px) {
+  .hud { transform: scale(0.8); transform-origin: top center; }
+  .game-banner, .zone-hud { top: 104px; }
+  .chat .game-btn { padding: 0 12px; }
+  .panel { bottom: 80px; }
+}

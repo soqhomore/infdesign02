@@ -2,7 +2,6 @@
 // 시작 시각(startAt)은 제안 메시지에 담아 Broadcast로 공유한다.
 // 멍때리기: 준비 3초 뒤부터 입력이 감지되면 기절(Broadcast), 마지막 한 마리가 승리
 // 창 닦기: wipe.js
-import { setFainted } from './sunfish.js'
 import { startWipe, onWipeMessage } from './wipe.js'
 
 export const GAMES = {
@@ -18,6 +17,7 @@ const INPUT_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'touchstart', 'wh
 const $ = (sel) => document.querySelector(sel)
 
 let me = null
+let setFainted = () => {} // 개복치를 그리는 쪽(sunfish.js 또는 pool.js)에서 넘겨받음
 let send = () => {}
 let current = null // { gameId, game, hostId, hostName, startAt, players: Map(id -> name), joined, phase, fainted: Map(id -> at) }
 let timer = null
@@ -42,9 +42,10 @@ function subj(name) {
   return code % 28 ? `${name}이` : `${name}가`
 }
 
-export function initGame(myself, sendFn) {
+export function initGame(myself, sendFn, fishApi) {
   me = myself
   send = sendFn
+  setFainted = fishApi.setFainted
 
   $('#game-btn').addEventListener('click', () => {
     if (current) return

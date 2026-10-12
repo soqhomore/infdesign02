@@ -1,4 +1,4 @@
-import { addFish, removeFish, fishIds, showBubble } from './sunfish.js'
+import { addFish, removeFish, fishIds, showBubble, setFainted } from './sunfish.js'
 import { connect, sendChat, sendGame } from './realtime.js'
 import { initGame, onGameMessage, onPresence } from './game.js'
 
@@ -45,7 +45,7 @@ $('#enter-form').addEventListener('submit', (e) => {
   $('#chat-input').focus()
 
   addFish(tank, me, true)
-  initGame(me, sendGame)
+  initGame(me, sendGame, { setFainted })
 
   connect(me, {
     onSync(people) {

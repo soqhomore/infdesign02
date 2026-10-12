@@ -1,7 +1,9 @@
-// 위에서 내려다본 도트 수조 (WebGL 프래그먼트 셰이더)
+// 위에서 내려다본 도트 수조 (WebGL 프래그먼트 셰이더) + 접속자 개복치들
 // 1) 낮은 해상도로 물 표면·바닥·물빛(caustics)·반사광을 계산하고
 // 2) 참고 이미지에서 뽑은 14색 팔레트 + 바이어 디더링으로 줄인 뒤
 // 3) CSS image-rendering: pixelated 로 확대해서 도트 그림처럼 보이게 한다.
+// 개복치는 셰이더 안에서 그려서 물과 같은 도트 격자에 맞는다. 이름표·말풍선은 DOM.
+// 바깥에 내보내는 함수(addFish 등)는 sunfish.js와 같은 모양이라 game.js를 그대로 쓸 수 있다.
 
 // 참고 이미지(김 서린 파란 수영장)에서 뽑은 색 + 하이라이트 + 개복치 볼터치용 분홍 두 색
 const PALETTE = [
@@ -10,8 +12,13 @@ const PALETTE = [
   '#e9799a', '#ffb3c6',
 ]
 // 개복치 스프라이트: 원본은 도트 1칸이 약 8.5px로 확대된 그림 → 원래 도트 크기로 되돌려서 씀
-// 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때)
-const FISH_FRAMES = ['/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png', '/fish/fish-left-mouthopen.png']
+// 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때) / 4: 정면(돌아설 때) / 5: 뒤집힘(기절)
+const FISH_FRAMES = [
+  '/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png',
+  '/fish/fish-left-mouthopen.png', '/fish/fish-middle.png', '/fish/fish-back-upsidedown.png',
+]
+const F = { swim1: 0, swim2: 1, blink: 2, talk: 3, front: 4, faint: 5 }
+const MAX_FISH = 16
 const FISH_ART_PX = 8.5
 const MAX_RIPPLES = 8
 
@@ -30,17 +37,33 @@ uniform float uQuant;      // 1 = 팔레트로 줄이기
 uniform vec3 uPal[${PALETTE.length}];
 uniform vec4 uRip[${MAX_RIPPLES}]; // 물결: x, y, 시작 시각, 세기
 uniform sampler2D uFish;   // 개복치 프레임들을 가로로 이어 붙인 그림
-uniform vec2 uFishCorner;  // 개복치 칸의 왼쪽 위 (저해상도 픽셀 좌표)
 uniform vec2 uFishCell;    // 한 프레임 칸 크기 (픽셀)
-uniform float uFishFrame, uFishFrames, uFishFlip, uFishOn;
+uniform float uFishFrames;
+uniform float uFishCount;
+uniform vec4 uFishA[${MAX_FISH}]; // 칸 왼쪽 위 x, y (저해상도 픽셀), 프레임, 좌우반전
+uniform float uFishHue[${MAX_FISH}]; // 접속자마다 다른 색 (색상 회전, 라디안)
 
-// 저해상도 픽셀 위치 px에서 개복치 그림 색 (도트 1칸 = 화면 도트 1칸)
-vec4 fishAt(vec2 px) {
-  if (uFishOn < 0.5) return vec4(0.0);
-  vec2 local = (floor(px) - uFishCorner + 0.5) / uFishCell;
-  if (local.x < 0.0 || local.y < 0.0 || local.x > 1.0 || local.y > 1.0) return vec4(0.0);
-  if (uFishFlip > 0.5) local.x = 1.0 - local.x;
-  return texture2D(uFish, vec2((uFishFrame + local.x) / uFishFrames, local.y));
+// 회색 축을 중심으로 색상 돌리기
+vec3 hueRotate(vec3 c, float a) {
+  vec3 k = vec3(0.57735);
+  float ca = cos(a), sa = sin(a);
+  return c * ca + cross(k, c) * sa + k * dot(k, c) * (1.0 - ca);
+}
+
+// 저해상도 픽셀 위치 px에 있는 개복치 색 (여럿 겹치면 나중 것이 위). 도트 1칸 = 화면 도트 1칸
+vec4 fishAt(vec2 px, out float hue) {
+  vec4 hit = vec4(0.0);
+  hue = 0.0;
+  for (int i = 0; i < ${MAX_FISH}; i++) {
+    if (float(i) >= uFishCount) break;
+    vec4 a = uFishA[i];
+    vec2 local = (floor(px) - a.xy + 0.5) / uFishCell;
+    if (local.x < 0.0 || local.y < 0.0 || local.x > 1.0 || local.y > 1.0) continue;
+    if (a.w > 0.5) local.x = 1.0 - local.x;
+    vec4 c = texture2D(uFish, vec2((a.z + local.x) / uFishFrames, local.y));
+    if (c.a > 0.5) { hit = c; hue = uFishHue[i]; }
+  }
+  return hit;
 }
 
 // ---------- 노이즈 ----------
@@ -207,11 +230,13 @@ void main() {
 
   // ---------- 개복치 (물 표면 바로 아래) ----------
   // 표면 일렁임은 개복치 전체를 1픽셀씩 흔들어서 표현 (JS에서) → 윤곽이 깨지지 않음
-  vec4 fish = fishAt(px);
+  float fishHue;
+  vec4 fish = fishAt(px, fishHue);
   float isFish = step(0.5, fish.a);
+  vec3 fishCol = vec3(0.0);
   if (fish.a > 0.5) {
     float lum = dot(fish.rgb, vec3(0.3, 0.59, 0.11));
-    vec3 fishCol = fish.rgb * (0.92 + 0.15 * max(L.z, 0.0));
+    fishCol = hueRotate(fish.rgb, fishHue) * (0.92 + 0.15 * max(L.z, 0.0));
     fishCol = mix(fishCol, fishCol * vec3(0.85, 0.97, 1.08), 0.5); // 물속이라 아주 살짝 푸르게
     fishCol += vec3(0.45, 0.85, 1.0) * caus * 0.1 * step(0.35, lum); // 밝은 몸 위로만 물빛
     if (lum < 0.36) fishCol = vec3(0.008, 0.06, 0.2); // 테두리는 또렷하게
@@ -250,6 +275,8 @@ void main() {
     }
     col = best;
   }
+  // 개복치는 팔레트로 줄이지 않음 (접속자마다 다른 색이 살아 있게)
+  if (isFish > 0.5) col = fishCol;
   gl_FragColor = vec4(col, 1.0);
 }
 `
@@ -282,9 +309,10 @@ const aPos = gl.getAttribLocation(prog, 'aPos')
 gl.enableVertexAttribArray(aPos)
 gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
 
+
 const U = {}
 for (const name of ['uRes', 'uTime', 'uLight', 'uDither', 'uQuant', 'uPal', 'uRip',
-  'uFish', 'uFishCorner', 'uFishCell', 'uFishFrame', 'uFishFrames', 'uFishFlip', 'uFishOn']) {
+  'uFish', 'uFishCell', 'uFishFrames', 'uFishCount', 'uFishA', 'uFishHue']) {
   U[name] = gl.getUniformLocation(prog, name)
 }
 gl.uniform3fv(U.uPal, PALETTE.flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)))
@@ -325,17 +353,12 @@ canvas.addEventListener('pointerdown', (e) => {
   const aspect = innerWidth / innerHeight
   ripples.set([(e.clientX / innerWidth) * aspect, e.clientY / innerHeight, simTime, 0.6], rippleIndex * 4)
   rippleIndex = (rippleIndex + 1) % MAX_RIPPLES
-  fish.target = [e.clientX / innerWidth, e.clientY / innerHeight] // 궁금해서 다가옴
-  fish.curious = 2.5
 })
 
-// ---------- 개복치 ----------
+// ---------- 개복치 스프라이트 ----------
 // 프레임들을 원래 도트 크기로 줄여서 가로로 이어 붙인 텍스처를 만든다
-const fish = {
-  ready: false, cell: [0, 0],
-  pos: [0.55, 0.62], vel: [0, 0], target: [0.4, 0.6],
-  flip: 0, frame: 0, frameClock: 0, blinkUntil: 0, curious: 0, talkUntil: 0,
-}
+let cell = [0, 0]
+let atlasReady = false
 Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
   const img = new Image()
   img.onload = () => ok(img)
@@ -366,8 +389,8 @@ Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
         out.data.set(sd.subarray((sy * im.width + sx) * 4, (sy * im.width + sx) * 4 + 4), (y * w + x) * 4)
       }
     }
-    // 가운데 정렬, 아래쪽(배 지느러미) 맞춤
-    ctx.putImageData(out, i * cw + Math.floor((cw - w) / 2), ch - h - 1)
+    // 가운데 정렬
+    ctx.putImageData(out, i * cw + Math.floor((cw - w) / 2), Math.floor((ch - h) / 2))
   })
   // 반투명 가장자리를 없애고, 바깥에 1도트 테두리를 둘러서 물속에서도 윤곽이 또렷하게
   const data = ctx.getImageData(0, 0, atlas.width, atlas.height)
@@ -379,8 +402,8 @@ Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
   for (let y = 0; y < Hh; y++) {
     for (let x = 0; x < W; x++) {
       if (solid(x, y)) continue
-      const cell = Math.floor(x / cw)
-      const same = (nx) => Math.floor(nx / cw) === cell
+      const c = Math.floor(x / cw)
+      const same = (nx) => Math.floor(nx / cw) === c
       if ((same(x - 1) && solid(x - 1, y)) || (same(x + 1) && solid(x + 1, y)) || solid(x, y - 1) || solid(x, y + 1)) edge.push(y * W + x)
     }
   }
@@ -397,49 +420,124 @@ Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   gl.uniform1i(U.uFish, 0)
   gl.uniform1f(U.uFishFrames, imgs.length)
-  fish.cell = [cw, ch]
-  fish.ready = true
+  cell = [cw, ch]
+  atlasReady = true
 })
 
-// 느긋하게 돌아다니다가, 목표에 닿으면 새 목표를 고른다
-function updateFish(dt, t) {
-  const aspect = innerWidth / innerHeight
-  const dx = (fish.target[0] - fish.pos[0]) * aspect
-  const dy = fish.target[1] - fish.pos[1]
-  const dist = Math.hypot(dx, dy)
-  if (dist < 0.03) {
-    fish.target = [0.12 + Math.random() * 0.76, 0.3 + Math.random() * 0.5]
-  }
-  const maxSpeed = fish.curious > 0 ? 0.16 : 0.07
-  const want = dist > 0 ? [(dx / dist) * maxSpeed, (dy / dist) * maxSpeed] : [0, 0]
-  fish.vel[0] += (want[0] - fish.vel[0]) * Math.min(1, dt * 1.5)
-  fish.vel[1] += (want[1] - fish.vel[1]) * Math.min(1, dt * 1.5)
-  fish.pos[0] += (fish.vel[0] / aspect) * dt
-  fish.pos[1] += fish.vel[1] * dt
-  fish.curious = Math.max(0, fish.curious - dt)
+// ---------- 접속자 개복치 ----------
+// 접속자마다 색조를 돌려서 구분 (원본은 파란색)
+const HUES = [0, -40, 40, 90, 140, 180, -140, -90]
+const BUBBLE_MS = 4000
+const fishes = new Map() // id -> 상태
 
-  // 그림은 왼쪽을 봄 → 오른쪽으로 갈 때 뒤집기 (살짝 여유를 둬서 떨림 방지)
-  if (fish.vel[0] > 0.012) fish.flip = 1
-  else if (fish.vel[0] < -0.012) fish.flip = 0
+// id로 정한 값은 모든 접속자 화면에서 똑같이 나온다
+function hashOf(id) {
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
+  return (h ^ (h >>> 16)) >>> 0
+}
+function seedsOf(id) {
+  let s = hashOf(id)
+  return Array.from({ length: 6 }, () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32))
+}
 
-  // 빨리 갈수록 지느러미를 빨리 침
-  const speed = Math.hypot(fish.vel[0], fish.vel[1])
-  fish.frameClock += dt * (2.5 + speed * 40)
-  if (!fish.blinkUntil && Math.random() < dt * 0.25) fish.blinkUntil = t + 0.18
-  let frame = Math.floor(fish.frameClock) % 2
-  if (fish.blinkUntil) {
-    if (t > fish.blinkUntil) fish.blinkUntil = 0
-    else frame = 2
+// 헤엄 경로: id와 '지금 시각'만으로 정해지는 느린 곡선 → 따로 위치를 주고받지 않아도
+// 모든 화면에서 같은 자리에 있다 (기기 시계가 맞다는 전제)
+function pathAt(r, t) {
+  return [
+    0.5 + 0.3 * Math.sin(t * (0.06 + 0.06 * r[0]) + 6.283 * r[1]) + 0.1 * Math.sin(t * (0.15 + 0.08 * r[2]) + 6.283 * r[3]),
+    0.56 + 0.17 * Math.sin(t * (0.05 + 0.05 * r[4]) + 6.283 * r[5]) + 0.06 * Math.sin(t * (0.13 + 0.06 * r[0]) + 6.283 * r[2]),
+  ]
+}
+
+export function addFish(layer, { id, name }, isMe) {
+  if (fishes.has(id)) return
+  const h = hashOf(id)
+  const label = document.createElement('div')
+  label.className = 'fish-label' + (isMe ? ' me' : '')
+  label.textContent = isMe ? `${name} (나)` : name
+  label.style.visibility = 'hidden' // 첫 프레임에서 자리를 잡기 전까지 숨김
+  const bubble = document.createElement('div')
+  bubble.className = 'bubble hidden'
+  layer.append(label, bubble)
+  fishes.set(id, {
+    id, isMe, label, bubble,
+    seeds: seedsOf(id),
+    hue: (HUES[h % HUES.length] * Math.PI) / 180,
+    flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, bubbleTimer: null,
+    fainted: false, faintPos: null,
+  })
+}
+
+export function removeFish(id) {
+  const f = fishes.get(id)
+  if (!f) return
+  clearTimeout(f.bubbleTimer)
+  f.label.remove()
+  f.bubble.remove()
+  fishes.delete(id)
+}
+
+export function fishIds() {
+  return [...fishes.keys()]
+}
+
+export function showBubble(id, text) {
+  const f = fishes.get(id)
+  if (!f) return
+  f.bubble.textContent = String(text).slice(0, 60)
+  f.bubble.classList.remove('hidden')
+  f.talkUntil = performance.now() + Math.min(BUBBLE_MS, 600 + text.length * 120)
+  clearTimeout(f.bubbleTimer)
+  f.bubbleTimer = setTimeout(() => f.bubble.classList.add('hidden'), BUBBLE_MS)
+}
+
+// 멍때리기에서 움직이면 그 자리에서 뒤집혀 기절
+export function setFainted(id, fainted) {
+  const f = fishes.get(id)
+  if (!f) return
+  f.fainted = fainted
+  f.faintPos = fainted ? pathAt(f.seeds, Date.now() / 1000) : null
+  f.label.classList.toggle('fainted', fainted)
+}
+
+// 이번 프레임에 개복치가 있을 자리·그림을 계산
+function fishFrame(f, now, t) {
+  let pos, frame
+  if (f.fainted) {
+    // 기절: 그 자리에서 천천히 둥실
+    pos = [f.faintPos[0], f.faintPos[1] + Math.sin(t * 1.2 + f.seeds[0] * 6) * 0.004]
+    frame = F.faint
+  } else {
+    pos = pathAt(f.seeds, t)
+    const ahead = pathAt(f.seeds, t + 0.5)
+    const vx = ahead[0] - pos[0]
+    // 그림은 왼쪽을 봄 → 오른쪽으로 갈 때 뒤집기. 방향이 바뀌면 잠깐 정면을 보며 돌아섬
+    const flip = vx > 0.0008 ? 1 : vx < -0.0008 ? 0 : f.flip
+    if (flip !== f.flip) {
+      f.flip = flip
+      f.turnUntil = now + 280
+    }
+    if (!f.blinkUntil && Math.random() < 0.004) f.blinkUntil = now + 180
+    if (f.blinkUntil && now > f.blinkUntil) f.blinkUntil = 0
+
+    frame = Math.floor(t * 3 + f.seeds[3] * 10) % 2 ? F.swim2 : F.swim1
+    if (now < f.talkUntil) frame = Math.floor(now / 160) % 2 ? F.talk : F.swim1
+    else if (now < f.turnUntil) frame = F.front
+    else if (f.blinkUntil) frame = F.blink
   }
-  if (performance.now() < fish.talkUntil) frame = Math.floor(performance.now() / 160) % 2 ? 3 : 0 // 입 뻐끔
-  fish.frame = frame
+  return { pos, frame, flip: f.fainted || frame === F.front ? 0 : f.flip }
 }
 
 // ---------- 그리기 ----------
+const fishA = new Float32Array(MAX_FISH * 4)
+const fishHue = new Float32Array(MAX_FISH)
 let last = performance.now()
 let frames = 0
 let fpsAt = last
-function frame(now) {
+function draw(now) {
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
   simTime += dt * Number(ui.speed.value)
@@ -451,23 +549,35 @@ function frame(now) {
   gl.uniform1f(U.uDither, Number(ui.dither.value))
   gl.uniform1f(U.uQuant, ui.pal.checked ? 1 : 0)
   gl.uniform4fv(U.uRip, ripples)
-  if (fish.ready) {
-    updateFish(dt * Number(ui.speed.value), simTime)
-    const bob = Math.sin(simTime * 2.2) * 1.2 // 위아래로 1~2픽셀 둥실
-    const wobble = Math.sin(simTime * 3.1) * Math.sin(simTime * 1.7) * 0.9 // 물결에 좌우로 살짝
-    const cx = Math.round(fish.pos[0] * canvas.width - fish.cell[0] / 2 + wobble)
-    const cy = Math.round(fish.pos[1] * canvas.height - fish.cell[1] / 2 + bob)
-    gl.uniform2f(U.uFishCorner, cx, cy)
-    // 말풍선은 개복치 머리 위에 (저해상도 픽셀 → 화면 px)
+
+  let count = 0
+  if (atlasReady) {
+    const t = Date.now() / 1000
     const sx = innerWidth / canvas.width
     const sy = innerHeight / canvas.height
-    bubble.style.left = `${(cx + fish.cell[0] / 2) * sx}px`
-    bubble.style.top = `${cy * sy - 12}px`
-    gl.uniform2f(U.uFishCell, fish.cell[0], fish.cell[1])
-    gl.uniform1f(U.uFishFrame, fish.frame)
-    gl.uniform1f(U.uFishFlip, fish.flip)
+    // 내 개복치를 마지막에 그려서 겹치면 위로
+    const list = [...fishes.values()].sort((a, b) => a.isMe - b.isMe).slice(-MAX_FISH)
+    for (const f of list) {
+      const { pos, frame, flip } = fishFrame(f, now, t)
+      const bob = Math.sin(t * 2.2 + f.seeds[1] * 6) * 1.2
+      const cx = Math.round(pos[0] * canvas.width - cell[0] / 2)
+      const cy = Math.round(pos[1] * canvas.height - cell[1] / 2 + bob)
+      fishA.set([cx, cy, frame, flip], count * 4)
+      fishHue[count] = f.hue
+      count++
+      // 이름표는 아래, 말풍선은 위 (저해상도 픽셀 → 화면 px)
+      const left = `${(cx + cell[0] / 2) * sx}px`
+      f.label.style.left = left
+      f.label.style.top = `${(cy + cell[1]) * sy}px`
+      f.label.style.visibility = ''
+      f.bubble.style.left = left
+      f.bubble.style.top = `${(cy + 2) * sy - 6}px`
+    }
+    gl.uniform2f(U.uFishCell, cell[0], cell[1])
+    gl.uniform4fv(U.uFishA, fishA)
+    gl.uniform1fv(U.uFishHue, fishHue)
   }
-  gl.uniform1f(U.uFishOn, fish.ready ? 1 : 0)
+  gl.uniform1f(U.uFishCount, count)
   gl.drawArrays(gl.TRIANGLES, 0, 3)
 
   frames++
@@ -476,45 +586,6 @@ function frame(now) {
     frames = 0
     fpsAt = now
   }
-  requestAnimationFrame(frame)
+  requestAnimationFrame(draw)
 }
-requestAnimationFrame(frame)
-
-// ---------- 채팅: 개복치 머리 위 말풍선 ----------
-const bubble = $('bubble')
-const BUBBLE_MS = 4000
-let bubbleTimer = null
-$('chat').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const input = $('chat-input')
-  const text = input.value.trim()
-  if (!text) return
-  bubble.textContent = text
-  bubble.classList.remove('hidden')
-  fish.talkUntil = performance.now() + Math.min(BUBBLE_MS, 600 + text.length * 120)
-  clearTimeout(bubbleTimer)
-  bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), BUBBLE_MS)
-  input.value = ''
-})
-
-// ---------- HUD 왼쪽: 접속한 지 지난 시간 ----------
-const startedAt = Date.now()
-function tickUptime() {
-  const sec = Math.floor((Date.now() - startedAt) / 1000)
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const pad = (n) => String(n).padStart(2, '0')
-  $('hud-uptime').textContent = h ? `${h}:${pad(m)}:${pad(sec % 60)}` : `${pad(m)}:${pad(sec % 60)}`
-}
-tickUptime()
-setInterval(tickUptime, 1000)
-
-// ---------- HUD 시계: 지금 시각을 12시간제로 ----------
-function tickClock() {
-  const now = new Date()
-  const h = now.getHours()
-  $('hud-ampm').textContent = h < 12 ? 'AM' : 'PM'
-  $('hud-time').textContent = `${h % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`
-}
-tickClock()
-setInterval(tickClock, 10000)
+requestAnimationFrame(draw)
