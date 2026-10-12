@@ -111,7 +111,7 @@ float swell(vec2 p, float t) {
 
 // 굴절된 빛이 바닥에 모이는 정도 = 1 / |det(I + k·Hessian(h))|
 float caustics(vec2 p, float t, float k) {
-  float e = 0.006;
+  float e = 0.011; // 간격을 넓혀 곡률을 부드럽게 → 십자 모양 튐 방지
   float h0 = swell(p, t);
   float hxp = swell(p + vec2(e, 0.0), t), hxm = swell(p - vec2(e, 0.0), t);
   float hyp = swell(p + vec2(0.0, e), t), hym = swell(p - vec2(0.0, e), t);
@@ -121,7 +121,7 @@ float caustics(vec2 p, float t, float k) {
   float hyy = (hyp - 2.0 * h0 + hym) / (e * e);
   float hxy = (hpp - hpm - hmp + hmm) / (4.0 * e * e);
   float det = (1.0 + k * hxx) * (1.0 + k * hyy) - k * k * hxy * hxy;
-  return clamp(1.0 / max(abs(det), 0.04), 0.0, 9.0);
+  return 1.0 / max(abs(det), 0.3);
 }
 
 // ---------- 수조 바닥 깊이 (0 얕음 ~ 1 깊음) ----------
@@ -165,8 +165,8 @@ void main() {
 
   float d = depthAt(uv, t);
 
-  // 굴절: 깊을수록 바닥이 더 많이 일렁여 보임
-  vec2 fuv = uv + N.xy * (0.012 + 0.03 * d);
+  // 굴절: 깊을수록 바닥이 더 많이 일렁여 보임 (과하면 바닥이 울퉁불퉁해 보여서 약하게)
+  vec2 fuv = uv + N.xy * (0.004 + 0.01 * d);
   vec2 fp = vec2(fuv.x * aspect, fuv.y);
   float fd = depthAt(fuv, t);
 
@@ -174,19 +174,30 @@ void main() {
   vec3 albedo = vec3(0.62, 0.86, 1.0);
   vec3 fN = vec3(0.0, 0.0, 1.0);
 
-  // 왼쪽 아래 자갈 더미
-  vec2 pc = (fuv - vec2(0.2, 0.75)) * vec2(aspect * 0.9, 1.25);
-  float pileMask = 1.0 - smoothstep(0.16, 0.3, length(pc) + 0.08 * (noise(fp * 9.0) - 0.5));
-  if (pileMask > 0.0) {
-    vec4 v = voronoi(fp * 11.0, 0.0);
-    vec2 local = (fp * 11.0 - v.zw) / 0.46;
-    float r2 = dot(local, local);
-    float stone = (1.0 - smoothstep(0.75, 1.0, r2)) * pileMask;
-    vec3 sN = normalize(vec3(local, sqrt(max(0.0, 1.0 - min(r2, 1.0)))));
-    fN = normalize(mix(fN, sN, stone));
-    float tone = hash(floor(v.zw * 7.0));
-    albedo = mix(albedo, mix(vec3(0.16, 0.3, 0.62), vec3(0.3, 0.5, 0.82), tone), stone);
-    albedo *= 1.0 - 0.45 * pileMask * (1.0 - stone); // 돌 사이 틈 어둡게
+  // 왼쪽 아래 자갈 더미: 도트 그림처럼 명암 3단계로 (둥근 덩어리가 뭉개져 보이지 않게)
+  // 돌 하나하나가 통째로 들어가거나 빠지도록, 돌(보로노이 칸) 중심이 더미 안에 있는지로 판단
+  float stoneMask = 0.0;
+  float pileMask = 0.0;
+  vec2 pileCenter = vec2(0.2 * aspect, 0.75);
+  vec4 v = voronoi(fp * 9.0, 0.0);
+  vec2 cellCenter = v.zw / 9.0;
+  vec2 pc = (cellCenter - pileCenter) * vec2(0.9, 1.25);
+  if (length(pc) + 0.05 * (hash(v.zw) - 0.5) < 0.22) {
+    pileMask = 1.0;
+    float gap = v.y - v.x; // 이웃 돌과의 경계까지
+    if (gap > 0.09) {
+      stoneMask = 1.0;
+      vec2 local = (fp * 9.0 - v.zw) / max(0.35, 0.55 * v.y);
+      float r2 = min(dot(local, local), 1.0);
+      vec3 sN = normalize(vec3(local, sqrt(1.0 - r2)));
+      float lit = dot(sN, L);
+      float tone = (hash(floor(v.zw * 7.0)) - 0.5) * 0.08;
+      vec3 dark = vec3(0.08, 0.18, 0.46), body = vec3(0.17, 0.34, 0.7), light = vec3(0.34, 0.58, 0.92);
+      albedo = (lit > 0.78 ? light : lit > 0.35 ? body : dark) + tone;
+      if (gap < 0.17) albedo = dark * 0.85; // 돌 테두리
+    } else {
+      albedo = vec3(0.04, 0.1, 0.32); // 돌 사이 틈
+    }
   }
 
   // 수조 턱 (아래): 밝은 타일 + 경계 그림자/하이라이트
@@ -196,20 +207,23 @@ void main() {
   if (fuv.y > rimY) albedo = vec3(0.7, 0.9, 1.0);
 
   float lambert = 0.35 + 0.65 * max(dot(fN, L), 0.0);
-  vec3 floorCol = albedo * lambert;
+  vec3 floorCol = pileMask > 0.0 ? albedo * 1.15 : albedo * lambert; // 자갈은 이미 명암을 넣었음
   floorCol *= 1.0 - 0.55 * rimShadow;
 
   // 개복치 그림자: 수면 가까이 떠 있으니 빛 반대 방향으로 조금 밀려서 바닥에 진다
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
-  vec2 shadowShift = -L.xy / max(L.z, 0.3) * (6.0 + 10.0 * fd);
-  float fishShadow = fishAt(fuv * uRes + shadowShift).a;
-  floorCol *= 1.0 - 0.5 * fishShadow;
+  // 개복치 모양 그대로 그리면 개복치가 둘로 보여서, 둥글고 옅은 그림자로
+  vec2 shadowShift = -L.xy / max(L.z, 0.3) * (3.0 + 6.0 * fd);
+  vec2 fishCenter = uFishCorner + uFishCell * vec2(0.5, 0.55);
+  vec2 sq = (floor(fuv * uRes) + shadowShift - fishCenter) / (uFishCell * vec2(0.34, 0.26));
+  float fishShadow = uFishOn * (1.0 - smoothstep(0.75, 1.0, length(sq)));
+  floorCol *= 1.0 - 0.45 * fishShadow;
 
   // ---------- 물빛 (caustics): 일렁이는 보로노이 경계선 두 겹 ----------
   // 깊을수록 빛이 모이는 거리가 길어져 무늬가 더 촘촘·강하게 접힘
   float k = 0.03 + 0.025 * fd;
   float caus = caustics(fp + L.xy * 0.02 * fd, t, k);
-  caus = min(pow(max(caus - 0.8, 0.0), 1.1), 2.2); // 너무 하얗게 타지 않게
+  caus = smoothstep(1.1, 2.4, caus); // 0~1 띠 모양으로 정리
   // 물빛이 고르게 깔리지 않고 뭉쳐 보이게
   caus *= 0.55 + 0.9 * fbm3(fp * 2.5 + vec2(t * 0.05, 0.0));
 
@@ -220,9 +234,9 @@ void main() {
   vec3 tint = mix(shallow, mid, smoothstep(0.2, 0.55, fd));
   tint = mix(tint, deep, smoothstep(0.7, 1.0, fd));
 
-  caus *= 1.0 - 0.8 * fishShadow;
+  caus *= 1.0 - 0.6 * fishShadow;
   vec3 col = floorCol * tint * 1.3;
-  col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.42;
+  col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.55 * (1.0 - 0.5 * stoneMask);
 
   // ---------- 개복치 (물 표면 바로 아래) ----------
   // 표면 일렁임은 개복치 전체를 1픽셀씩 흔들어서 표현 (JS에서) → 윤곽이 깨지지 않음
