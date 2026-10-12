@@ -469,3 +469,13 @@ function frame(now) {
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)
+
+// ---------- HUD 시계: 지금 시각을 12시간제로 ----------
+function tickClock() {
+  const now = new Date()
+  const h = now.getHours()
+  $('hud-ampm').textContent = h < 12 ? 'AM' : 'PM'
+  $('hud-time').textContent = `${h % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+tickClock()
+setInterval(tickClock, 10000)
