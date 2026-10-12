@@ -1,0 +1,392 @@
+@font-face {
+  font-family: 'Cucumber';
+  src: url('/fonts/EF_cucumbersalad.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Heumul';
+  src: url('/fonts/DreamHeumulKR.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  --ink: #4a5578;
+  --line: #5b6b9a;
+  --card: rgba(255, 255, 255, 0.72);
+  --accent: #8fb8ff;
+  --accent-dark: #6f9cf0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Heumul', system-ui, sans-serif;
+  color: var(--ink);
+  background: #cdeffd;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- 물속 배경 ---------- */
+.water {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #d4f1ff 0%, #bfeee6 45%, #d9d2ff 100%);
+  overflow: hidden;
+}
+.light {
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 60%;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.55), transparent 55%),
+    radial-gradient(ellipse at 70% 0%, rgba(255, 255, 255, 0.4), transparent 50%);
+  animation: shimmer 9s ease-in-out infinite alternate;
+}
+@keyframes shimmer {
+  from { transform: translateX(-3%) skewX(-4deg); opacity: 0.8; }
+  to   { transform: translateX(3%) skewX(4deg); opacity: 1; }
+}
+.bubbles span {
+  position: absolute;
+  bottom: -40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.25);
+  animation: rise linear infinite;
+}
+@keyframes rise {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: translate(14px, -55vh); }
+  100% { transform: translate(-10px, -110vh); opacity: 0; }
+}
+
+/* ---------- 수조 / 개복치 ---------- */
+.tank {
+  position: fixed;
+  inset: 0 0 80px 0;
+}
+.fish {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.6s;
+  animation: appear 0.6s ease-out;
+}
+.fish.leaving { opacity: 0; }
+@keyframes appear {
+  from { opacity: 0; transform: translate(-50%, -40%); }
+}
+.fish-body {
+  position: relative;
+  animation: bob var(--bob-dur, 5s) ease-in-out var(--bob-delay, 0s) infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(-12px) rotate(-3deg); }
+  50%      { transform: translateY(12px) rotate(3deg); }
+}
+.fish-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sunfish-box {
+  height: 162px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sunfish-img {
+  display: block;
+  height: auto;
+  image-rendering: pixelated;
+  user-select: none;
+}
+.sunfish-img.flip { transform: scaleX(-1); }
+.fish-name {
+  margin: 2px auto 0;
+  width: max-content;
+  max-width: 160px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
+}
+.fish.me .fish-name {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---------- 말풍선 ---------- */
+.speech {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  min-width: 60px;
+  max-width: 220px;
+  width: max-content;
+  padding: 10px 14px;
+  background: #fff;
+  border: 2.5px solid var(--line);
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.35;
+  text-align: center;
+  word-break: break-word;
+  animation: pop 0.25s ease-out;
+  transition: opacity 0.4s;
+}
+.speech::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-right: 2.5px solid var(--line);
+  border-bottom: 2.5px solid var(--line);
+  transform: translate(-50%, -6px) rotate(45deg);
+}
+.speech.fade { opacity: 0; }
+@keyframes pop {
+  from { transform: translateX(-50%) scale(0.6); opacity: 0; }
+}
+
+/* ---------- 입장 화면 ---------- */
+.enter {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(3px);
+}
+.enter-card {
+  width: min(360px, 100%);
+  padding: 32px 28px;
+  border-radius: 28px;
+  background: var(--card);
+  border: 2.5px solid var(--line);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.enter-card h1 {
+  margin: 0;
+  font-family: 'Cucumber', 'Heumul', sans-serif;
+  font-size: 40px;
+  font-weight: normal;
+}
+.enter-card p { margin: 0 0 8px; }
+
+input, button {
+  font: inherit;
+  font-size: 16px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  padding: 12px 14px;
+}
+input {
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px rgba(143, 184, 255, 0.35); }
+button {
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+}
+button:hover { background: var(--accent-dark); }
+
+/* ---------- 하단 채팅바 ---------- */
+.chat-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 2px solid rgba(91, 107, 154, 0.35);
+  backdrop-filter: blur(6px);
+}
+.chat-bar input { flex: 1; min-width: 0; }
+
+/* ---------- 상태 안내 ---------- */
+.status {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------- 게임 제안 ---------- */
+button:disabled { opacity: 0.5; cursor: default; background: var(--accent); }
+button.ghost { background: #fff; color: var(--ink); }
+button.ghost:hover { background: #f1f4ff; }
+.game-btn { background: #ffb3c7; }
+.game-btn:hover:not(:disabled) { background: #ff96b2; }
+
+.game-picker {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  width: min(320px, calc(100% - 32px));
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 2.5px solid var(--line);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: pop-up 0.2s ease-out;
+}
+.game-picker p { margin: 0 0 4px; text-align: center; }
+@keyframes pop-up {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+}
+
+.game-banner {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  padding: 12px 14px 10px;
+  border-radius: 18px;
+  background: #fff;
+  border: 2.5px solid var(--line);
+  animation: drop 0.3s ease-out;
+}
+@keyframes drop {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+}
+.game-banner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.game-banner strong { display: block; font-weight: normal; font-size: 17px; }
+.game-banner small { font-size: 13px; opacity: 0.75; }
+.game-banner button { padding: 8px 16px; }
+.game-joined { white-space: nowrap; color: var(--accent-dark); }
+.game-banner-track {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e7ecfb;
+  overflow: hidden;
+}
+.game-banner-bar {
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+/* ---------- 멍때리기 ---------- */
+.zone-hud {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 2.5px solid var(--line);
+  text-align: center;
+  pointer-events: none;
+}
+.zone-hud-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.zone-hud strong { font-weight: normal; font-size: 17px; }
+.zone-hud-time { font-family: 'Cucumber', 'Heumul', sans-serif; font-size: 28px; }
+.zone-hud small { display: block; margin-top: 4px; font-size: 13px; opacity: 0.8; }
+
+/* 기절: 뒤집힌 채로 천천히 떠오름 */
+.fish.fainted .fish-body {
+  animation: faint-float 3s ease-in-out infinite alternate;
+}
+.fish.fainted .sunfish-img { opacity: 0.85; }
+.fish.fainted .fish-name::after { content: ' · 기절'; }
+@keyframes faint-float {
+  from { transform: translateY(0) rotate(-8deg); }
+  to   { transform: translateY(-18px) rotate(8deg); }
+}
+
+.game-result {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 20px 28px;
+  border-radius: 24px;
+  background: #fff;
+  border: 3px solid var(--line);
+  text-align: center;
+  animation: result-pop 0.35s ease-out;
+  pointer-events: none;
+}
+.game-result strong {
+  font-family: 'Cucumber', 'Heumul', sans-serif;
+  font-weight: normal;
+  font-size: 30px;
+}
+@keyframes result-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+}
+
+/* ---------- 김 서린 창 닦기 ---------- */
+.wipe-stage {
+  position: fixed;
+  inset: 0;
+  background: #7f9ed6;
+  touch-action: none; /* 문지를 때 화면이 스크롤·확대되지 않게 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.wipe-scene, .wipe-fog {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.wipe-scene { image-rendering: pixelated; }
+.wipe-fog {
+  opacity: 0.94;
+  cursor: grab;
+  transition: opacity 1.2s ease-out;
+}
+.wipe-fog:active { cursor: grabbing; }
+.wipe-stage.clear .wipe-fog { opacity: 0; }
