@@ -152,6 +152,8 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .clock p { margin: 0; }
 
 /* ---------- 개복치 이름표·말풍선 ---------- */
+/* 개복치 말·이름에 쓰는 글씨는 꿈흐믈체 (말풍선, 채팅 입력, 이름표, 이름 입력) */
+.fish-label, #name-input, #nick-input { font-family: var(--talk); }
 .tank { position: fixed; inset: 0; pointer-events: none; }
 .fish-label {
   position: absolute;
