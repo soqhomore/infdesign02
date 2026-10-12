@@ -89,6 +89,33 @@
       </form>
     </section>
 
+    <!-- 좌상단: 휴식 밸런스 투표 (작은 아이콘 + 미니 팝업) -->
+    <button type="button" class="balance-btn hidden" id="balance-btn" aria-label="휴식 밸런스 투표" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v18M7 21h10M5 7h14" />
+        <path d="M5 7l-3 6a3 3 0 0 0 6 0z" />
+        <path d="M19 7l-3 6a3 3 0 0 0 6 0z" />
+      </svg>
+    </button>
+    <div class="balance-pop hidden" id="balance-pop" role="dialog" aria-label="휴식 밸런스 투표">
+      <div class="balance-head">
+        <span id="balance-category"></span>
+        <span id="balance-left"></span>
+      </div>
+      <button type="button" class="balance-choice" id="balance-a"></button>
+      <button type="button" class="balance-choice" id="balance-b"></button>
+      <div class="balance-result hidden" id="balance-result">
+        <div class="balance-track"><div class="balance-bar" id="balance-bar"></div></div>
+        <small id="balance-count"></small>
+      </div>
+      <small class="balance-note hidden" id="balance-note"></small>
+      <button type="button" class="balance-more" id="balance-more">더보기</button>
+      <div class="balance-more-text hidden" id="balance-more-text">
+        <p id="balance-summary"></p>
+        <p>포스터 속 실제 하루에서 가장 좋았던 휴식은 가장 비싼 곳이 아니라, 넓은 풍경을 보며 직접 고른 시간이었다.</p>
+      </div>
+    </div>
+
     <!-- 우상단 설정 -->
     <button type="button" class="settings-btn" id="settings-btn" aria-label="설정" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

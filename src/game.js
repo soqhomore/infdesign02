@@ -277,6 +277,12 @@ function finishZone() {
   }, RESULT_MS)
 }
 
+// 지금 게임 중인 개복치 (투표 쪽으로 헤엄치기에서 뺌)
+export function playingIds() {
+  if (!current || current.phase === 'invite') return new Set()
+  return new Set(current.players.keys())
+}
+
 // ---------- 멍때리기 순위 ----------
 const RANK_MS = 15000
 let rankTimer = null

@@ -406,7 +406,7 @@ function lookAtViewer(x, y) {
   const aspect = innerWidth / innerHeight
   for (const f of fishes.values()) {
     if (f.fainted || isResting(f, t)) continue // 지쳐서 쉬는 중엔 반응 안 함
-    const [fx, fy] = pathAt(f.seeds, t)
+    const [fx, fy] = swimPos(f, t)
     const delay = Math.hypot((fx - x) * aspect, fy - y) * 700
     f.lookFrom = now + delay
     f.lookUntil = now + delay + LOOK_MS
@@ -523,6 +523,35 @@ function pathAt(r, t) {
   ]
 }
 
+// ---------- 휴식 밸런스 투표: A는 왼쪽, B는 오른쪽으로 천천히 ----------
+const SIDE_MS = 6000 // 자유롭게 떠다니다가 한쪽으로 다 가기까지
+// 지금 얼마나 그쪽으로 갔는지 (0~1). 프레임 수와 상관없이 시간으로 계산
+function blendOf(f, now = performance.now()) {
+  const dir = f.side ? 1 : -1
+  return Math.max(0, Math.min(1, f.blendFrom + (dir * (now - f.blendAt)) / SIDE_MS))
+}
+export function setSide(id, side) {
+  const f = fishes.get(id)
+  if (!f || f.side === side) return
+  const now = performance.now()
+  // 다른 쪽으로 바로 바뀌면 일단 가운데로 돌아갔다가 가도록 지금 값에서 이어서
+  f.blendFrom = f.side && side ? 0 : blendOf(f, now)
+  f.blendAt = now
+  f.side = side
+  if (side) f.sideKind = side
+}
+// 투표 쪽으로 얼마나 갔는지(blend 0~1)만큼 자유 경로의 x를 그쪽 구역으로 끌어당김
+function swimPos(f, t) {
+  const free = pathAt(f.seeds, t)
+  const blend = blendOf(f)
+  if (!blend) return free
+  const r = f.seeds
+  const center = f.sideKind === 'a' ? 0.2 + 0.08 * r[2] : 0.8 - 0.08 * r[2]
+  const sx = center + 0.07 * Math.sin(t * (0.08 + 0.05 * r[3]) + 6.283 * r[0])
+  const e = ease(blend)
+  return [free[0] + (sx - free[0]) * e, free[1]]
+}
+
 export function addFish(layer, { id, name, hue, joinedAt }, isMe) {
   if (fishes.has(id)) return
   const label = document.createElement('div')
@@ -536,6 +565,7 @@ export function addFish(layer, { id, name, hue, joinedAt }, isMe) {
     id, isMe, label, bubble,
     seeds: seedsOf(id),
     joinedAt: joinedAt || Date.now(), // 들어온 시각 (지쳐서 쉬는 주기 기준)
+    side: null, sideKind: null, blendFrom: 0, blendAt: 0, // 밸런스 투표 쪽
     hue: hueOf(id, hue),
     flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, lookFrom: 0, lookUntil: 0, bubbleTimer: null,
     fainted: false, faintPos: null,
@@ -596,7 +626,7 @@ function restState(f, t) {
   const phase = ((t * 1000 - f.joinedAt) / 1000) % CYCLE_S
   if (phase < SWIM_S) return null
   const rp = phase - SWIM_S
-  const start = pathAt(f.seeds, t - rp) // 지치기 시작한 자리
+  const start = swimPos(f, t - rp) // 지치기 시작한 자리
   const floorY = 0.78 + 0.05 * f.seeds[4] // 바닥 (개복치마다 조금씩 다르게)
   if (rp < SINK_S) {
     // y축으로만 똑바로 가라앉음
@@ -605,14 +635,14 @@ function restState(f, t) {
   if (rp < SINK_S + REST_S) return { mode: 'rest', pos: [start[0], floorY] }
   // 다시 원래 헤엄 경로로 떠오름
   const u = ease((rp - SINK_S - REST_S) / RISE_S)
-  const to = pathAt(f.seeds, t)
+  const to = swimPos(f, t)
   return { mode: 'rise', pos: [start[0] + (to[0] - start[0]) * u, floorY + (to[1] - floorY) * u] }
 }
 const isResting = (f, t) => {
   const r = restState(f, t)
   return !!r && r.mode !== 'rise'
 }
-const currentPos = (f, t) => restState(f, t)?.pos ?? pathAt(f.seeds, t)
+const currentPos = (f, t) => restState(f, t)?.pos ?? swimPos(f, t)
 
 // 이번 프레임에 개복치가 있을 자리·그림을 계산
 function fishFrame(f, now, t) {
@@ -629,8 +659,8 @@ function fishFrame(f, now, t) {
     pos = [f.faintPos[0], f.faintPos[1] + Math.sin(t * 1.2 + f.seeds[0] * 6) * 0.004]
     frame = F.faint
   } else {
-    pos = rest ? rest.pos : pathAt(f.seeds, t)
-    const ahead = pathAt(f.seeds, t + 0.5)
+    pos = rest ? rest.pos : swimPos(f, t)
+    const ahead = swimPos(f, t + 0.5)
     const vx = ahead[0] - pos[0]
     // 그림은 왼쪽을 봄 → 오른쪽으로 갈 때 뒤집기. 방향이 바뀌면 잠깐 정면을 보며 돌아섬
     const flip = vx > 0.0008 ? 1 : vx < -0.0008 ? 0 : f.flip
@@ -710,3 +740,4 @@ function draw(now) {
   requestAnimationFrame(draw)
 }
 requestAnimationFrame(draw)
+

@@ -384,6 +384,95 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   color: var(--on-pill);
 }
 
+/* ---------- 좌상단: 휴식 밸런스 투표 ---------- */
+.balance-btn {
+  position: fixed;
+  top: 28px;
+  left: 24px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--pill);
+  color: var(--on-pill);
+  display: grid;
+  place-items: center;
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+.balance-btn:hover, .balance-btn[aria-expanded='true'] { opacity: 1; }
+/* 아직 투표 안 했거나 새 소식이 있으면 작은 점 */
+.balance-btn.badge::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff8fb1;
+  box-shadow: 0 0 0 2px var(--pill);
+}
+.balance-btn.flash { animation: balance-blink 0.9s ease-in-out 3; }
+@keyframes balance-blink {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .balance-btn.flash { animation: none; }
+}
+.balance-pop {
+  position: fixed;
+  top: 76px;
+  left: 24px;
+  width: min(260px, 80vw);
+  box-sizing: border-box;
+  padding: 12px 14px 10px;
+  border-radius: 18px;
+  background: rgba(var(--pill-rgb), 0.78);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--on-pill);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.balance-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.balance-choice {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(var(--on-rgb), 0.1);
+  color: var(--on-pill);
+  font-family: var(--talk);
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+}
+.balance-choice:hover { background: rgba(var(--on-rgb), 0.18); }
+.balance-choice[aria-pressed='true'] { background: var(--on-pill); color: var(--pill); }
+.balance-choice#balance-a::before { content: 'A  '; opacity: 0.6; }
+.balance-choice#balance-b::before { content: 'B  '; opacity: 0.6; }
+.balance-result { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.balance-track { height: 4px; border-radius: 2px; background: rgba(var(--on-rgb), 0.2); overflow: hidden; }
+.balance-bar { height: 100%; background: var(--on-pill); transition: width 0.4s ease; }
+.balance-result small, .balance-note { font-size: 12px; color: var(--muted); white-space: pre; }
+.balance-note { white-space: normal; }
+.balance-more {
+  align-self: flex-start;
+  padding: 2px 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline;
+}
+.balance-more-text p { margin: 2px 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
 /* ---------- 우상단 설정 ---------- */
 .settings-btn {
   position: fixed;

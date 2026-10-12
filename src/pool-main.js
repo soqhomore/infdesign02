@@ -1,8 +1,9 @@
 // 도트 수조판 개복치 수조: 입장, 채팅, 게임은 원래 사이트(main.js)와 같은 구조.
 // 개복치 그리기만 sunfish.js 대신 pool.js(셰이더)를 쓴다.
-import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, setNight, HUES, swatchColor } from './pool.js'
+import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, setNight, setSide, HUES, swatchColor } from './pool.js'
 import { connect, sendChat, sendGame, updatePresence } from './realtime.js'
-import { initGame, onGameMessage, onPresence } from './game.js'
+import { initGame, onGameMessage, onPresence, playingIds } from './game.js'
+import { initBalance, onVoteUpdated, currentQuestion } from './balance.js'
 import { configureWipe } from './wipe.js'
 
 // 창 닦기: 아쿠아리움 관람실 모양, 시간 제한 없음
@@ -58,7 +59,9 @@ $('#enter-form').addEventListener('submit', (e) => {
   const name = $('#name-input').value.trim().slice(0, 12)
   if (!name) return
 
-  me = { id: crypto.randomUUID(), name, x: 50, y: 50, hue: prefs.hue, joinedAt: Date.now() }
+  // 개복치 고유 id는 이 브라우저에 기억 (밸런스 투표에서 '한 사람 한 표'의 기준)
+  prefs.fishId ??= crypto.randomUUID()
+  me = { id: prefs.fishId, name, x: 50, y: 50, hue: prefs.hue, joinedAt: Date.now(), vote: null }
   prefs.name = name
   savePrefs()
   $('#nick-input').value = name
@@ -70,12 +73,16 @@ $('#enter-form').addEventListener('submit', (e) => {
 
   addFish(layer, me, true)
   initGame(me, sendGame, { setFainted })
+  initBalance(me, { onSidesChange: updateSides })
+  setInterval(updateSides, 1000) // 질문이 바뀌거나 게임이 시작·끝나면 반영
 
   connect(me, {
     onSync(people) {
       const present = new Set(people.map((p) => p.id))
+      peopleVotes.clear()
       for (const p of people) {
         if (p.id === me.id) continue
+        peopleVotes.set(p.id, p.vote)
         addFish(layer, p, false)
         updateFish(p.id, p) // 이미 있던 개복치면 닉네임·색 바뀐 것 반영
       }
@@ -83,11 +90,13 @@ $('#enter-form').addEventListener('submit', (e) => {
         if (id !== me.id && !present.has(id)) removeFish(id)
       }
       onPresence([...present])
+      updateSides()
     },
     onChat({ id, text }) {
       showBubble(id, text)
     },
     onGame: onGameMessage,
+    onVote: onVoteUpdated,
     onStatus(status) {
       if (status === 'offline') setStatus('혼자 모드 · .env에 Supabase 키를 넣으면 같이 놀 수 있어요')
       else if (status === 'SUBSCRIBED') setStatus('')
@@ -95,6 +104,18 @@ $('#enter-form').addEventListener('submit', (e) => {
     },
   })
 })
+
+// ---------- 밸런스 투표 → 수조: A는 왼쪽, B는 오른쪽 (게임 중인 개복치는 빼고) ----------
+const peopleVotes = new Map() // 다른 사람 id → { q, c } (Presence에서)
+function updateSides() {
+  if (!me) return
+  const q = currentQuestion().id
+  const playing = playingIds()
+  for (const id of fishIds()) {
+    const v = id === me.id ? me.vote : peopleVotes.get(id)
+    setSide(id, !playing.has(id) && v && v.q === q ? v.c : null)
+  }
+}
 
 // ---------- 채팅 ----------
 $('#chat-form').addEventListener('submit', (e) => {
