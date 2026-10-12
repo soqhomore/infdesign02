@@ -10,7 +10,8 @@ const PALETTE = [
   '#e9799a', '#ffb3c6',
 ]
 // 개복치 스프라이트: 원본은 도트 1칸이 약 8.5px로 확대된 그림 → 원래 도트 크기로 되돌려서 씀
-const FISH_FRAMES = ['/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png']
+// 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때)
+const FISH_FRAMES = ['/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png', '/fish/fish-left-mouthopen.png']
 const FISH_ART_PX = 8.5
 const MAX_RIPPLES = 8
 
@@ -292,7 +293,10 @@ gl.uniform3fv(U.uPal, PALETTE.flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex
 const $ = (id) => document.getElementById(id)
 const ui = { px: $('px'), speed: $('speed'), dither: $('dither'), pal: $('pal'), light: $('light') }
 $('toggle').addEventListener('click', () => $('panel').classList.toggle('hidden'))
-addEventListener('keydown', (e) => { if (e.key === 'h' || e.key === 'H') $('panel').classList.toggle('hidden') })
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return // 채팅 칠 때는 무시
+  if (e.key === 'h' || e.key === 'H') $('panel').classList.toggle('hidden')
+})
 
 function resize() {
   const px = Number(ui.px.value)
@@ -330,7 +334,7 @@ canvas.addEventListener('pointerdown', (e) => {
 const fish = {
   ready: false, cell: [0, 0],
   pos: [0.55, 0.62], vel: [0, 0], target: [0.4, 0.6],
-  flip: 0, frame: 0, frameClock: 0, blinkUntil: 0, curious: 0,
+  flip: 0, frame: 0, frameClock: 0, blinkUntil: 0, curious: 0, talkUntil: 0,
 }
 Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
   const img = new Image()
@@ -427,6 +431,7 @@ function updateFish(dt, t) {
     if (t > fish.blinkUntil) fish.blinkUntil = 0
     else frame = 2
   }
+  if (performance.now() < fish.talkUntil) frame = Math.floor(performance.now() / 160) % 2 ? 3 : 0 // 입 뻐끔
   fish.frame = frame
 }
 
@@ -450,9 +455,14 @@ function frame(now) {
     updateFish(dt * Number(ui.speed.value), simTime)
     const bob = Math.sin(simTime * 2.2) * 1.2 // 위아래로 1~2픽셀 둥실
     const wobble = Math.sin(simTime * 3.1) * Math.sin(simTime * 1.7) * 0.9 // 물결에 좌우로 살짝
-    gl.uniform2f(U.uFishCorner,
-      Math.round(fish.pos[0] * canvas.width - fish.cell[0] / 2 + wobble),
-      Math.round(fish.pos[1] * canvas.height - fish.cell[1] / 2 + bob))
+    const cx = Math.round(fish.pos[0] * canvas.width - fish.cell[0] / 2 + wobble)
+    const cy = Math.round(fish.pos[1] * canvas.height - fish.cell[1] / 2 + bob)
+    gl.uniform2f(U.uFishCorner, cx, cy)
+    // 말풍선은 개복치 머리 위에 (저해상도 픽셀 → 화면 px)
+    const sx = innerWidth / canvas.width
+    const sy = innerHeight / canvas.height
+    bubble.style.left = `${(cx + fish.cell[0] / 2) * sx}px`
+    bubble.style.top = `${cy * sy - 12}px`
     gl.uniform2f(U.uFishCell, fish.cell[0], fish.cell[1])
     gl.uniform1f(U.uFishFrame, fish.frame)
     gl.uniform1f(U.uFishFlip, fish.flip)
@@ -469,6 +479,35 @@ function frame(now) {
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)
+
+// ---------- 채팅: 개복치 머리 위 말풍선 ----------
+const bubble = $('bubble')
+const BUBBLE_MS = 4000
+let bubbleTimer = null
+$('chat').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const input = $('chat-input')
+  const text = input.value.trim()
+  if (!text) return
+  bubble.textContent = text
+  bubble.classList.remove('hidden')
+  fish.talkUntil = performance.now() + Math.min(BUBBLE_MS, 600 + text.length * 120)
+  clearTimeout(bubbleTimer)
+  bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), BUBBLE_MS)
+  input.value = ''
+})
+
+// ---------- HUD 왼쪽: 접속한 지 지난 시간 ----------
+const startedAt = Date.now()
+function tickUptime() {
+  const sec = Math.floor((Date.now() - startedAt) / 1000)
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const pad = (n) => String(n).padStart(2, '0')
+  $('hud-uptime').textContent = h ? `${h}:${pad(m)}:${pad(sec % 60)}` : `${pad(m)}:${pad(sec % 60)}`
+}
+tickUptime()
+setInterval(tickUptime, 1000)
 
 // ---------- HUD 시계: 지금 시각을 12시간제로 ----------
 function tickClock() {

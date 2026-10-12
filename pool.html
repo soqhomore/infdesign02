@@ -55,59 +55,6 @@
         white-space: nowrap;
       }
 
-      /* 왼쪽 위 프로필 카드 */
-      .profile {
-        position: absolute;
-        left: 41px;
-        top: 0;
-        width: 212px;
-        height: 88px;
-        box-sizing: border-box;
-        padding: 10px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        border-radius: 90px;
-        background: #fff;
-        overflow: hidden;
-      }
-      .profile-photo {
-        position: relative;
-        flex: none;
-        width: 82px;
-        height: 82px;
-        border-radius: 80px;
-        overflow: hidden;
-        transform: scaleX(-1); /* 디자인에서 좌우 반전 */
-      }
-      .profile-photo img {
-        position: absolute;
-        top: 0;
-        left: -17.75%;
-        width: 117.17%;
-        height: 100%;
-        max-width: none;
-      }
-      .stats {
-        flex: none;
-        width: 87px;
-        height: 84px;
-        box-sizing: border-box;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        color: #000;
-        font-size: 12px;
-        text-align: left;
-      }
-      .stats p { margin: 0; }
-      .stat-bar { position: relative; width: 67px; height: 1px; }
-      /* SVG는 둥근 끝(선 두께 10) 때문에 칸보다 사방으로 5px 크다 → 원래 크기 그대로 겹쳐 놓기 */
-      .stat-bar img { position: absolute; left: -5px; top: -5px; display: block; }
-      .stat-bar.tilt { height: 2px; transform: rotate(-0.86deg) skewX(-0.55deg); }
-
       /* 가운데 위 시계 캡슐 */
       .topbar {
         position: absolute;
@@ -131,7 +78,7 @@
         font-size: 20px;
         overflow: hidden;
       }
-      .pill.money { left: 0; border-radius: 20px 0 0 20px; }
+      .pill.uptime { left: 0; border-radius: 20px 0 0 20px; letter-spacing: -0.5px; }
       .pill.name { left: 277px; border-radius: 0 20px 20px 0; }
       .clock {
         position: absolute;
@@ -154,10 +101,77 @@
       }
       .clock p { margin: 0; }
 
-      /* 좁은 화면: 시계를 가운데 두고 프로필은 그 아래로 */
+      /* ---------- 채팅 (시계 캡슐과 같은 검은 알약 스타일) ---------- */
+      .chat {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        width: min(480px, calc(100% - 32px));
+        display: flex;
+        gap: 8px;
+        font-family: 'EF_cucumbersalad', sans-serif;
+      }
+      .chat input, .chat button {
+        height: 44px;
+        box-sizing: border-box;
+        border: none;
+        outline: none;
+        background: #000;
+        color: #fff;
+        font: inherit;
+        font-size: 20px;
+      }
+      .chat input {
+        flex: 1;
+        min-width: 0;
+        padding: 0 20px;
+        border-radius: 20px 0 0 20px;
+      }
+      .chat input::placeholder { color: rgba(255, 255, 255, 0.45); }
+      .chat input:focus { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
+      .chat button {
+        width: 115px;
+        border-radius: 0 20px 20px 0;
+        cursor: pointer;
+      }
+      .chat button:hover { background: #222; }
+
+      /* 개복치 위 말풍선 */
+      .bubble {
+        position: fixed;
+        left: 0;
+        top: 0;
+        max-width: 260px;
+        width: max-content;
+        padding: 10px 16px;
+        border-radius: 20px;
+        background: #000;
+        color: #fff;
+        font-family: 'EF_cucumbersalad', sans-serif;
+        font-size: 20px;
+        line-height: 1.2;
+        text-align: center;
+        word-break: break-word;
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+        transition: opacity 0.3s;
+      }
+      .bubble::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        border: 8px solid transparent;
+        border-top-color: #000;
+        transform: translateX(-50%);
+      }
+      .bubble.hidden { opacity: 0; }
+
+      /* 좁은 화면 */
       @media (max-width: 760px) {
         .hud { transform: scale(0.8); transform-origin: top center; }
-        .profile { left: 50%; top: 100px; transform: translateX(-50%); }
+        .panel { bottom: 80px; }
       }
     </style>
   </head>
@@ -166,21 +180,19 @@
 
     <!-- HUD -->
     <div class="hud">
-      <div class="profile">
-        <div class="profile-photo"><img src="/ui/profile.png" alt="" /></div>
-        <div class="stats">
-          <p>여행 의지</p>
-          <div class="stat-bar"><img src="/ui/bar-will.svg" alt="여행 의지 77%" /></div>
-          <p>발바닥 통증</p>
-          <div class="stat-bar tilt"><img src="/ui/bar-pain.svg" alt="발바닥 통증 100%" /></div>
-        </div>
-      </div>
       <div class="topbar">
-        <div class="pill money" id="hud-money">₩1000</div>
+        <div class="pill uptime" id="hud-uptime" title="접속한 지 지난 시간">00:00</div>
         <div class="pill name" id="hud-name">개복치이름</div>
         <div class="clock"><p id="hud-ampm">AM</p><p id="hud-time">10:00</p></div>
       </div>
     </div>
+    <!-- 채팅 -->
+    <div class="bubble hidden" id="bubble"></div>
+    <form class="chat" id="chat" autocomplete="off">
+      <input id="chat-input" type="text" maxlength="40" placeholder="개복치에게 말 걸기" />
+      <button type="submit">보내기</button>
+    </form>
+
     <div class="panel" id="panel">
       <span class="toggle" id="toggle">▾ 설정 (H)</span>
       <label for="px">도트 크기</label><input id="px" type="range" min="2" max="10" value="2" />
