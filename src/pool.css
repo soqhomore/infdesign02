@@ -303,6 +303,50 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 }
 .game-result strong { font-weight: normal; font-size: 34px; letter-spacing: -1px; }
 
+/* ---------- 멍때리기 순위 ---------- */
+.game-rank {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(380px, calc(100% - 32px));
+  max-height: calc(100% - 180px);
+  padding: 20px 22px 18px;
+  border-radius: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+.rank-label { margin: 0; color: var(--muted); font-size: 14px; }
+.game-rank h2 { margin: 0 0 4px; font-weight: normal; font-size: 26px; letter-spacing: -1px; }
+.game-rank ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.game-rank li {
+  display: grid;
+  grid-template-columns: 44px 1fr auto 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(var(--on-rgb), 0.08);
+  font-size: 17px;
+  text-align: left;
+}
+.game-rank li.me { box-shadow: inset 0 0 0 1.5px var(--on-pill); }
+.rank-no { color: var(--muted); }
+.game-rank li:first-child .rank-no { color: var(--on-pill); }
+.rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-time { font-size: 15px; }
+.rank-tag { justify-self: end; font-size: 13px; color: var(--muted); }
+.rank-tag.win { color: var(--pill); background: var(--on-pill); padding: 2px 8px; border-radius: 8px; }
+.game-rank > button { align-self: center; padding: 8px 28px; margin-top: 4px; }
+
 /* ---------- 김 서린 창 닦기 ---------- */
 .wipe-stage {
   position: fixed;

@@ -19,7 +19,7 @@ const $ = (sel) => document.querySelector(sel)
 let me = null
 let setFainted = () => {} // 개복치를 그리는 쪽(sunfish.js 또는 pool.js)에서 넘겨받음
 let send = () => {}
-let current = null // { gameId, game, hostId, hostName, startAt, players: Map(id -> name), joined, phase, fainted: Map(id -> at) }
+let current = null // { gameId, game, hostId, hostName, startAt, players: Map(id -> name), joined, phase, fainted: Map(id -> at), left: Set }
 let timer = null
 
 // 65초 → '1분 5초'
@@ -59,6 +59,7 @@ export function initGame(myself, sendFn, fishApi) {
   }
   $('#game-picker-cancel').addEventListener('click', () => $('#game-picker').classList.add('hidden'))
   $('#game-join').addEventListener('click', join)
+  $('#game-rank-close')?.addEventListener('click', hideRanking)
   for (const type of INPUT_EVENTS) window.addEventListener(type, onZoneInput, { passive: true })
 }
 
@@ -125,7 +126,10 @@ export function onPresence(presentIds) {
   for (const id of current.players.keys()) {
     if (present.has(id) || id === me.id) continue
     if (current.phase === 'invite') current.players.delete(id)
-    else if (current.game === 'zone' && current.phase === 'playing') faint(id, Date.now())
+    else if (current.game === 'zone' && current.phase === 'playing') {
+      current.left.add(id) // 순위에 '나감'으로 표시
+      faint(id, Date.now())
+    }
   }
   if (current.game === 'wipe' && current.phase === 'playing') onWipePresence(presentIds)
   render()
@@ -188,6 +192,7 @@ function render() {
 function startZone() {
   current.phase = 'playing'
   current.fainted = new Map()
+  current.left = new Set()
   current.endTimer = null
   $('#zone-hud-title').textContent = '멍때리기'
   if (current.joined) {
@@ -255,8 +260,12 @@ function finishZone() {
   }
 
   $('#zone-hud').classList.add('hidden')
-  $('#game-result-text').textContent = text
-  $('#game-result').classList.remove('hidden')
+  // 순위표 자리가 있는 화면(도트판)이면 순위표로, 아니면 결과 한 줄만
+  if ($('#game-rank')) showRanking(text)
+  else {
+    $('#game-result-text').textContent = text
+    $('#game-result').classList.remove('hidden')
+  }
 
   const ids = [...current.players.keys()]
   current.phase = 'result'
@@ -266,6 +275,63 @@ function finishZone() {
     $('#chat-form').classList.remove('hidden')
     clear()
   }, RESULT_MS)
+}
+
+// ---------- 멍때리기 순위 ----------
+const RANK_MS = 15000
+let rankTimer = null
+
+// 끝까지 안 기절한 사람이 1위, 나머지는 늦게 기절한 순. 같은 순간 기절이면 같은 순위
+function ranking() {
+  const { players, fainted, left, startAt } = current
+  const endAt = Math.max(...fainted.values())
+  const rows = [...players].map(([id, name]) => ({
+    id,
+    name,
+    at: fainted.has(id) ? fainted.get(id) : Infinity,
+    rested: (fainted.has(id) ? fainted.get(id) : endAt) - startAt,
+    tag: !fainted.has(id) ? '승리' : left.has(id) ? '나감' : '기절',
+  }))
+  rows.sort((a, b) => b.at - a.at)
+  rows.forEach((r, i) => {
+    r.rank = i > 0 && rows[i - 1].at === r.at ? rows[i - 1].rank : i + 1
+  })
+  // 혼자 했거나 둘이 거의 동시에 기절해서 '승리'가 없으면 1위를 승리로
+  if (players.size > 1 && !rows.some((r) => r.tag === '승리')) rows[0].tag = '승리'
+  if (players.size === 1) rows[0].tag = '혼자 쉼'
+  return rows
+}
+
+function showRanking(headline) {
+  const card = $('#game-rank')
+  $('#game-rank-title').textContent = headline
+  const list = $('#game-rank-list')
+  list.replaceChildren(...ranking().map((r) => {
+    const li = document.createElement('li')
+    li.className = r.id === me.id ? 'me' : ''
+    const rank = document.createElement('span')
+    rank.className = 'rank-no'
+    rank.textContent = `${r.rank}위`
+    const name = document.createElement('span')
+    name.className = 'rank-name'
+    name.textContent = r.id === me.id ? `${r.name} (나)` : r.name
+    const time = document.createElement('span')
+    time.className = 'rank-time'
+    time.textContent = fmt(r.rested)
+    const tag = document.createElement('span')
+    tag.className = `rank-tag ${r.tag === '승리' ? 'win' : ''}`
+    tag.textContent = r.tag
+    li.append(rank, name, time, tag)
+    return li
+  }))
+  card.classList.remove('hidden')
+  clearTimeout(rankTimer)
+  rankTimer = setTimeout(hideRanking, RANK_MS)
+}
+
+function hideRanking() {
+  clearTimeout(rankTimer)
+  $('#game-rank')?.classList.add('hidden')
 }
 
 function clear() {
