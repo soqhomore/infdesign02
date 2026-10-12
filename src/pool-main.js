@@ -58,7 +58,7 @@ $('#enter-form').addEventListener('submit', (e) => {
   const name = $('#name-input').value.trim().slice(0, 12)
   if (!name) return
 
-  me = { id: crypto.randomUUID(), name, x: 50, y: 50, hue: prefs.hue }
+  me = { id: crypto.randomUUID(), name, x: 50, y: 50, hue: prefs.hue, joinedAt: Date.now() }
   prefs.name = name
   savePrefs()
   $('#nick-input').value = name

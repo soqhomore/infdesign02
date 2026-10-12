@@ -21,12 +21,13 @@ const PALETTE_NIGHT = [
 const PAL_N = Math.max(PALETTE.length, PALETTE_NIGHT.length)
 const padPal = (p) => [...p, ...Array(PAL_N - p.length).fill(p[p.length - 1])]
 // 개복치 스프라이트: 원본은 도트 1칸이 약 8.5px로 확대된 그림 → 원래 도트 크기로 되돌려서 씀
-// 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때) / 4: 정면(돌아설 때) / 5: 뒤집힘(기절)
+// 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때) / 4: 정면(돌아설 때) / 5: 뒤집힘(기절) / 6: 누움(지쳐서 쉼)
 const FISH_FRAMES = [
   '/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png',
   '/fish/fish-left-mouthopen.png', '/fish/fish-middle.png', '/fish/fish-back-upsidedown.png',
+  '/fish/fish-laying.png',
 ]
-const F = { swim1: 0, swim2: 1, blink: 2, talk: 3, front: 4, faint: 5 }
+const F = { swim1: 0, swim2: 1, blink: 2, talk: 3, front: 4, faint: 5, lay: 6 }
 const MAX_FISH = 16
 const FISH_ART_PX = 8.5
 const MAX_RIPPLES = 8
@@ -404,7 +405,7 @@ function lookAtViewer(x, y) {
   const t = Date.now() / 1000
   const aspect = innerWidth / innerHeight
   for (const f of fishes.values()) {
-    if (f.fainted) continue
+    if (f.fainted || isResting(f, t)) continue // 지쳐서 쉬는 중엔 반응 안 함
     const [fx, fy] = pathAt(f.seeds, t)
     const delay = Math.hypot((fx - x) * aspect, fy - y) * 700
     f.lookFrom = now + delay
@@ -522,7 +523,7 @@ function pathAt(r, t) {
   ]
 }
 
-export function addFish(layer, { id, name, hue }, isMe) {
+export function addFish(layer, { id, name, hue, joinedAt }, isMe) {
   if (fishes.has(id)) return
   const label = document.createElement('div')
   label.className = 'fish-label' + (isMe ? ' me' : '')
@@ -534,6 +535,7 @@ export function addFish(layer, { id, name, hue }, isMe) {
   fishes.set(id, {
     id, isMe, label, bubble,
     seeds: seedsOf(id),
+    joinedAt: joinedAt || Date.now(), // 들어온 시각 (지쳐서 쉬는 주기 기준)
     hue: hueOf(id, hue),
     flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, lookFrom: 0, lookUntil: 0, bubbleTimer: null,
     fainted: false, faintPos: null,
@@ -541,11 +543,12 @@ export function addFish(layer, { id, name, hue }, isMe) {
 }
 
 // 닉네임·색이 바뀌었을 때
-export function updateFish(id, { name, hue }) {
+export function updateFish(id, { name, hue, joinedAt }) {
   const f = fishes.get(id)
   if (!f) return
   if (name) f.label.textContent = f.isMe ? `${name} (나)` : name
   f.hue = hueOf(id, hue)
+  if (joinedAt) f.joinedAt = joinedAt
 }
 
 export function removeFish(id) {
@@ -576,19 +579,57 @@ export function setFainted(id, fainted) {
   const f = fishes.get(id)
   if (!f) return
   f.fainted = fainted
-  f.faintPos = fainted ? pathAt(f.seeds, Date.now() / 1000) : null
+  f.faintPos = fainted ? currentPos(f, Date.now() / 1000) : null
   f.label.classList.toggle('fainted', fainted)
 }
+
+// ---------- 지쳐서 쉬기: 3분 헤엄 → 바닥으로 똑바로 가라앉아 1분 누워 쉼 → 다시 떠오름 (반복) ----------
+// 들어온 시각(joinedAt)과 지금 시각만으로 정해져서 모든 화면에서 같다
+const SWIM_S = 180
+const SINK_S = 4
+const REST_S = 60
+const RISE_S = 4
+const CYCLE_S = SWIM_S + SINK_S + REST_S + RISE_S
+const ease = (u) => u * u * (3 - 2 * u)
+
+function restState(f, t) {
+  const phase = ((t * 1000 - f.joinedAt) / 1000) % CYCLE_S
+  if (phase < SWIM_S) return null
+  const rp = phase - SWIM_S
+  const start = pathAt(f.seeds, t - rp) // 지치기 시작한 자리
+  const floorY = 0.78 + 0.05 * f.seeds[4] // 바닥 (개복치마다 조금씩 다르게)
+  if (rp < SINK_S) {
+    // y축으로만 똑바로 가라앉음
+    return { mode: 'sink', pos: [start[0], start[1] + (floorY - start[1]) * ease(rp / SINK_S)] }
+  }
+  if (rp < SINK_S + REST_S) return { mode: 'rest', pos: [start[0], floorY] }
+  // 다시 원래 헤엄 경로로 떠오름
+  const u = ease((rp - SINK_S - REST_S) / RISE_S)
+  const to = pathAt(f.seeds, t)
+  return { mode: 'rise', pos: [start[0] + (to[0] - start[0]) * u, floorY + (to[1] - floorY) * u] }
+}
+const isResting = (f, t) => {
+  const r = restState(f, t)
+  return !!r && r.mode !== 'rise'
+}
+const currentPos = (f, t) => restState(f, t)?.pos ?? pathAt(f.seeds, t)
 
 // 이번 프레임에 개복치가 있을 자리·그림을 계산
 function fishFrame(f, now, t) {
   let pos, frame
+  const rest = f.fainted ? null : restState(f, t)
+  const resting = !!rest && rest.mode !== 'rise'
+  f.label.classList.toggle('resting', resting)
+  if (resting) {
+    // 누운 채로 가라앉아 쉼. 말·탭·깜빡임 등에 반응 안 함
+    return { pos: rest.pos, frame: F.lay, flip: f.flip, still: true }
+  }
   if (f.fainted) {
     // 기절: 그 자리에서 천천히 둥실
     pos = [f.faintPos[0], f.faintPos[1] + Math.sin(t * 1.2 + f.seeds[0] * 6) * 0.004]
     frame = F.faint
   } else {
-    pos = pathAt(f.seeds, t)
+    pos = rest ? rest.pos : pathAt(f.seeds, t)
     const ahead = pathAt(f.seeds, t + 0.5)
     const vx = ahead[0] - pos[0]
     // 그림은 왼쪽을 봄 → 오른쪽으로 갈 때 뒤집기. 방향이 바뀌면 잠깐 정면을 보며 돌아섬
@@ -638,8 +679,8 @@ function draw(now) {
     // 내 개복치를 마지막에 그려서 겹치면 위로
     const list = [...fishes.values()].sort((a, b) => a.isMe - b.isMe).slice(-MAX_FISH)
     for (const f of list) {
-      const { pos, frame, flip } = fishFrame(f, now, t)
-      const bob = Math.sin(t * 2.2 + f.seeds[1] * 6) * 1.2
+      const { pos, frame, flip, still } = fishFrame(f, now, t)
+      const bob = still ? 0 : Math.sin(t * 2.2 + f.seeds[1] * 6) * 1.2
       const cx = Math.round(pos[0] * canvas.width - cell[0] / 2)
       const cy = Math.round(pos[1] * canvas.height - cell[1] / 2 + bob)
       fishA.set([cx, cy, frame, flip], count * 4)

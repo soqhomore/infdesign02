@@ -9,9 +9,9 @@ export const hasKeys = Boolean(URL && KEY && !URL.includes('xxxx'))
 
 let channel = null
 
-// 다른 사람에게 보이는 내 정보 (hue: 개복치 색, 도트판에서만 씀)
+// 다른 사람에게 보이는 내 정보 (hue: 개복치 색, joinedAt: 들어온 시각 — 도트판에서만 씀)
 function presenceOf(me) {
-  return { id: me.id, name: me.name, x: me.x, y: me.y, hue: me.hue }
+  return { id: me.id, name: me.name, x: me.x, y: me.y, hue: me.hue, joinedAt: me.joinedAt }
 }
 
 export function connect(me, { onSync, onChat, onGame, onStatus }) {

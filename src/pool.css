@@ -164,6 +164,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 }
 .fish-label.me { background: var(--on-pill); color: var(--pill); }
 .fish-label.fainted::after { content: ' · 기절'; }
+.fish-label.resting::after { content: ' · 쉬는 중'; }
 .bubble {
   position: absolute;
   max-width: 240px;
