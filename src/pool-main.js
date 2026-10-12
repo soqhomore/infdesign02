@@ -1,7 +1,7 @@
 // 도트 수조판 개복치 수조: 입장, 채팅, 게임은 원래 사이트(main.js)와 같은 구조.
 // 개복치 그리기만 sunfish.js 대신 pool.js(셰이더)를 쓴다.
-import { addFish, removeFish, fishIds, showBubble, setFainted } from './pool.js'
-import { connect, sendChat, sendGame } from './realtime.js'
+import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, HUES, swatchColor } from './pool.js'
+import { connect, sendChat, sendGame, updatePresence } from './realtime.js'
 import { initGame, onGameMessage, onPresence } from './game.js'
 
 const $ = (sel) => document.querySelector(sel)
@@ -29,6 +29,23 @@ function tickHud() {
 tickHud()
 setInterval(tickHud, 1000)
 
+// ---------- 이 브라우저에 기억해 두는 설정 (닉네임·색·물) ----------
+const PREFS_KEY = 'sunfish-pool-prefs'
+const WATER_IDS = ['px', 'speed', 'dither', 'pal', 'light']
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}
+  } catch {
+    return {}
+  }
+}
+const prefs = loadPrefs()
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+  } catch {}
+}
+
 // ---------- 입장 ----------
 let me = null
 
@@ -37,7 +54,10 @@ $('#enter-form').addEventListener('submit', (e) => {
   const name = $('#name-input').value.trim().slice(0, 12)
   if (!name) return
 
-  me = { id: crypto.randomUUID(), name, x: 50, y: 50 }
+  me = { id: crypto.randomUUID(), name, x: 50, y: 50, hue: prefs.hue }
+  prefs.name = name
+  savePrefs()
+  $('#nick-input').value = name
 
   $('#enter').classList.add('hidden')
   $('#chat-form').classList.remove('hidden')
@@ -51,7 +71,9 @@ $('#enter-form').addEventListener('submit', (e) => {
     onSync(people) {
       const present = new Set(people.map((p) => p.id))
       for (const p of people) {
-        if (p.id !== me.id) addFish(layer, p, false)
+        if (p.id === me.id) continue
+        addFish(layer, p, false)
+        updateFish(p.id, p) // 이미 있던 개복치면 닉네임·색 바뀐 것 반영
       }
       for (const id of fishIds()) {
         if (id !== me.id && !present.has(id)) removeFish(id)
@@ -80,3 +102,79 @@ $('#chat-form').addEventListener('submit', (e) => {
   sendChat(me.id, text)
   input.value = ''
 })
+
+// ---------- 우상단 설정: 닉네임 · 개복치 색 · 물 ----------
+const settingsBtn = $('#settings-btn')
+const settings = $('#settings')
+function openSettings(open) {
+  settings.classList.toggle('hidden', !open)
+  settingsBtn.setAttribute('aria-expanded', String(open))
+}
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation()
+  openSettings(settings.classList.contains('hidden'))
+})
+// 바깥을 누르거나 Esc면 닫기
+addEventListener('pointerdown', (e) => {
+  if (!settings.classList.contains('hidden') && !settings.contains(e.target) && !settingsBtn.contains(e.target)) openSettings(false)
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') openSettings(false)
+})
+
+// 닉네임
+if (prefs.name) $('#name-input').value = prefs.name
+$('#nick-input').value = prefs.name || ''
+$('#name-form').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const name = $('#nick-input').value.trim().slice(0, 12)
+  if (!name) return
+  prefs.name = name
+  savePrefs()
+  if (!me) {
+    $('#name-input').value = name // 입장 전이면 입장 칸에 채워 두기
+    return
+  }
+  me.name = name
+  $('#hud-name').textContent = name
+  updateFish(me.id, { name, hue: me.hue })
+  updatePresence(me)
+})
+
+// 개복치 색
+const swatches = $('#swatches')
+function renderSwatches() {
+  swatches.replaceChildren(...HUES.map((deg, i) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.style.background = swatchColor(deg)
+    b.setAttribute('aria-label', `색 ${i + 1}`)
+    b.setAttribute('aria-pressed', String(prefs.hue === deg))
+    b.addEventListener('click', () => {
+      prefs.hue = deg
+      savePrefs()
+      renderSwatches()
+      if (!me) return
+      me.hue = deg
+      updateFish(me.id, { hue: deg })
+      updatePresence(me)
+    })
+    return b
+  }))
+}
+renderSwatches()
+
+// 물: 바꾼 값 기억했다가 다음에 들어와도 그대로
+for (const id of WATER_IDS) {
+  const el = document.getElementById(id)
+  const saved = prefs.water?.[id]
+  if (saved !== undefined) {
+    if (el.type === 'checkbox') el.checked = saved
+    else el.value = saved
+    el.dispatchEvent(new Event('input'))
+  }
+  el.addEventListener('input', () => {
+    prefs.water = { ...prefs.water, [id]: el.type === 'checkbox' ? el.checked : el.value }
+    savePrefs()
+  })
+}

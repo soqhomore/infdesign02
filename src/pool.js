@@ -317,14 +317,9 @@ for (const name of ['uRes', 'uTime', 'uLight', 'uDither', 'uQuant', 'uPal', 'uRi
 }
 gl.uniform3fv(U.uPal, PALETTE.flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)))
 
-// ---------- 설정 패널 ----------
+// ---------- 물 설정 (설정 카드 안의 입력들) ----------
 const $ = (id) => document.getElementById(id)
 const ui = { px: $('px'), speed: $('speed'), dither: $('dither'), pal: $('pal'), light: $('light') }
-$('toggle').addEventListener('click', () => $('panel').classList.toggle('hidden'))
-addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return // 채팅 칠 때는 무시
-  if (e.key === 'h' || e.key === 'H') $('panel').classList.toggle('hidden')
-})
 
 function resize() {
   const px = Number(ui.px.value)
@@ -425,8 +420,21 @@ Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
 })
 
 // ---------- 접속자 개복치 ----------
-// 접속자마다 색조를 돌려서 구분 (원본은 파란색)
-const HUES = [0, -40, 40, 90, 140, 180, -140, -90]
+// 접속자마다 색조를 돌려서 구분 (원본은 파란색). 설정에서 고를 수 있는 색도 이것
+export const HUES = [0, -40, 40, 90, 140, 180, -140, -90]
+
+// 원본 몸통 파랑을 색조 회전했을 때의 색 (설정의 색 견본용, 셰이더와 같은 식)
+export function swatchColor(deg) {
+  const a = (deg * Math.PI) / 180
+  const c = [0.39, 0.59, 0.86]
+  const k = 0.57735
+  const ca = Math.cos(a), sa = Math.sin(a)
+  const dot = k * (c[0] + c[1] + c[2])
+  const cross = [k * (c[2] - c[1]), k * (c[0] - c[2]), k * (c[1] - c[0])]
+  const out = c.map((v, i) => v * ca + cross[i] * sa + k * dot * (1 - ca))
+  return `rgb(${out.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(',')})`
+}
+const hueOf = (id, deg) => ((typeof deg === 'number' ? deg : HUES[hashOf(id) % HUES.length]) * Math.PI) / 180
 const BUBBLE_MS = 4000
 const fishes = new Map() // id -> 상태
 
@@ -452,9 +460,8 @@ function pathAt(r, t) {
   ]
 }
 
-export function addFish(layer, { id, name }, isMe) {
+export function addFish(layer, { id, name, hue }, isMe) {
   if (fishes.has(id)) return
-  const h = hashOf(id)
   const label = document.createElement('div')
   label.className = 'fish-label' + (isMe ? ' me' : '')
   label.textContent = isMe ? `${name} (나)` : name
@@ -465,10 +472,18 @@ export function addFish(layer, { id, name }, isMe) {
   fishes.set(id, {
     id, isMe, label, bubble,
     seeds: seedsOf(id),
-    hue: (HUES[h % HUES.length] * Math.PI) / 180,
+    hue: hueOf(id, hue),
     flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, bubbleTimer: null,
     fainted: false, faintPos: null,
   })
+}
+
+// 닉네임·색이 바뀌었을 때
+export function updateFish(id, { name, hue }) {
+  const f = fishes.get(id)
+  if (!f) return
+  if (name) f.label.textContent = f.isMe ? `${name} (나)` : name
+  f.hue = hueOf(id, hue)
 }
 
 export function removeFish(id) {

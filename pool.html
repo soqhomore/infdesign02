@@ -81,15 +81,36 @@
       </form>
     </section>
 
-    <!-- 물 설정 (H) -->
-    <div class="panel hidden" id="panel">
-      <span class="toggle" id="toggle">▾ 물 설정 (H)</span>
-      <label for="px">도트 크기</label><input id="px" type="range" min="2" max="10" value="2" />
-      <label for="speed">속도</label><input id="speed" type="range" min="0" max="2" step="0.1" value="0.5" />
-      <label for="dither">디더링</label><input id="dither" type="range" min="0" max="1.5" step="0.1" value="0.6" />
-      <label for="pal">팔레트 고정</label><input id="pal" type="checkbox" checked />
-      <label for="light">빛 = 마우스</label><input id="light" type="checkbox" checked />
-      <span>fps</span><span id="fps">-</span>
+    <!-- 우상단 설정 -->
+    <button type="button" class="settings-btn" id="settings-btn" aria-label="설정" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </button>
+    <div class="settings hidden" id="settings" role="dialog" aria-label="설정">
+      <section>
+        <h2>닉네임</h2>
+        <form class="name-row" id="name-form" autocomplete="off">
+          <input id="nick-input" type="text" maxlength="12" placeholder="이름 (최대 12자)" />
+          <button type="submit" class="light">바꾸기</button>
+        </form>
+      </section>
+      <section>
+        <h2>개복치 색</h2>
+        <div class="swatches" id="swatches"></div>
+      </section>
+      <section>
+        <h2>물</h2>
+        <div class="water-grid">
+          <label for="px">도트 크기</label><input id="px" type="range" min="2" max="10" value="2" />
+          <label for="speed">속도</label><input id="speed" type="range" min="0" max="2" step="0.1" value="0.5" />
+          <label for="dither">디더링</label><input id="dither" type="range" min="0" max="1.5" step="0.1" value="0.6" />
+          <label for="pal">팔레트 고정</label><input id="pal" type="checkbox" checked />
+          <label for="light">빛 = 마우스</label><input id="light" type="checkbox" checked />
+          <span>fps</span><span id="fps">-</span>
+        </div>
+      </section>
     </div>
 
     <script type="module" src="/src/pool-main.js"></script>
