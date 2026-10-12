@@ -4,51 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>개복치 수조</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/pool.css" />
   </head>
   <body>
-    <!-- 물속 배경 -->
-    <div class="water">
-      <div class="light"></div>
-      <div class="bubbles" id="bubbles"></div>
-    </div>
+    <!-- 물 (WebGL, 개복치도 여기서 그림) -->
+    <canvas id="pool"></canvas>
+    <!-- 이름표·말풍선 -->
+    <div class="tank" id="tank"></div>
 
-    <!-- 수조: 개복치들이 들어가는 곳 -->
-    <main class="tank" id="tank"></main>
-
-    <!-- 입장 화면 -->
-    <section class="enter" id="enter">
-      <form class="enter-card" id="enter-form">
-        <h1>개복치 수조</h1>
-        <p>이름을 정하고 수조에 들어가요</p>
-        <input id="name-input" type="text" maxlength="12" placeholder="이름 (최대 12자)" autocomplete="off" required />
-        <button type="submit">입장하기</button>
-      </form>
-    </section>
-
-    <!-- 하단 채팅 입력창 -->
-    <form class="chat-bar hidden" id="chat-form">
-      <input id="chat-input" type="text" maxlength="60" placeholder="개복치에게 말 시키기…" autocomplete="off" />
-      <button type="submit">보내기</button>
-      <button type="button" class="game-btn" id="game-btn">게임 하자</button>
-    </form>
-
-    <!-- 게임 고르기 -->
-    <div class="game-picker hidden" id="game-picker">
-      <p>어떤 게임 할까요?</p>
-      <button type="button" data-game="zone">멍때리기</button>
-      <button type="button" data-game="wipe">김 서린 창 닦기</button>
-      <button type="button" class="ghost" id="game-picker-cancel">취소</button>
+    <!-- 위: 접속 시간 | 지금 시각 | 내 이름 -->
+    <div class="hud">
+      <div class="topbar">
+        <div class="pill uptime" id="hud-uptime" title="접속한 지 지난 시간">00:00</div>
+        <div class="pill name" id="hud-name">개복치이름</div>
+        <div class="clock"><p id="hud-ampm">AM</p><p id="hud-time">10:00</p></div>
+      </div>
     </div>
 
     <!-- 게임 제안 배너 (10초) -->
-    <div class="game-banner hidden" id="game-banner">
+    <div class="card game-banner hidden" id="game-banner">
       <div class="game-banner-row">
         <div>
           <strong id="game-banner-text"></strong>
           <small id="game-banner-sub"></small>
         </div>
-        <button type="button" id="game-join">참여</button>
+        <button type="button" class="light" id="game-join">참여</button>
         <span class="game-joined hidden" id="game-joined">참여함 ✓</span>
       </div>
       <div class="game-banner-track"><div class="game-banner-bar" id="game-banner-bar"></div></div>
@@ -60,8 +40,8 @@
       <canvas class="wipe-fog" id="wipe-fog"></canvas>
     </section>
 
-    <!-- 게임 진행 상황 (멍때리기 / 창 닦기 공용) -->
-    <div class="zone-hud hidden" id="zone-hud">
+    <!-- 게임 진행 상황 (멍때리기 / 창 닦기) -->
+    <div class="card zone-hud hidden" id="zone-hud">
       <div class="zone-hud-top">
         <strong id="zone-hud-title">멍때리기</strong>
         <span class="zone-hud-time" id="zone-hud-time">0:00</span>
@@ -71,14 +51,85 @@
     </div>
 
     <!-- 게임 결과 -->
-    <div class="game-result hidden" id="game-result">
-      <strong id="game-result-text"></strong>
+    <div class="game-result hidden" id="game-result"><strong id="game-result-text"></strong></div>
+
+    <!-- 멍때리기 순위 -->
+    <section class="card game-rank hidden" id="game-rank" aria-label="멍때리기 순위">
+      <p class="rank-label">멍때리기 순위</p>
+      <h2 id="game-rank-title"></h2>
+      <ol id="game-rank-list"></ol>
+      <button type="button" class="light" id="game-rank-close">닫기</button>
+    </section>
+
+    <!-- 게임 고르기 -->
+    <div class="card game-picker hidden" id="game-picker">
+      <p>어떤 게임 할까요?</p>
+      <button type="button" class="outline" data-game="zone">멍때리기</button>
+      <button type="button" class="outline" data-game="wipe">김 서린 창 닦기</button>
+      <button type="button" class="ghost" id="game-picker-cancel">취소</button>
     </div>
 
+    <!-- 아래: 채팅 -->
+    <form class="chat hidden" id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" maxlength="60" placeholder="개복치에게 말 시키기" />
+      <button type="submit">보내기</button>
+      <button type="button" class="game-btn" id="game-btn"><i></i>게임 하자</button>
+    </form>
 
     <!-- 상태 안내 -->
     <div class="status hidden" id="status"></div>
 
-    <script type="module" src="/src/main.js"></script>
+    <!-- 입장 -->
+    <section class="enter" id="enter">
+      <form class="enter-card" id="enter-form" autocomplete="off">
+        <h1>개복치 수조</h1>
+        <p>이름을 정하고 수조에 들어가요</p>
+        <input id="name-input" type="text" maxlength="12" placeholder="이름 (최대 12자)" required />
+        <button type="submit" class="light">입장하기</button>
+      </form>
+    </section>
+
+    <!-- 우상단 설정 -->
+    <button type="button" class="settings-btn" id="settings-btn" aria-label="설정" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </button>
+    <div class="settings hidden" id="settings" role="dialog" aria-label="설정">
+      <section>
+        <h2>닉네임</h2>
+        <form class="name-row" id="name-form" autocomplete="off">
+          <input id="nick-input" type="text" maxlength="12" placeholder="이름 (최대 12자)" />
+          <button type="submit" class="light">바꾸기</button>
+        </form>
+      </section>
+      <section>
+        <h2>개복치 색</h2>
+        <div class="swatches" id="swatches"></div>
+      </section>
+      <section>
+        <h2>밤 모드</h2>
+        <div class="segmented" id="theme-mode" role="radiogroup" aria-label="밤 모드">
+          <button type="button" role="radio" data-mode="auto">자동</button>
+          <button type="button" role="radio" data-mode="day">낮</button>
+          <button type="button" role="radio" data-mode="night">밤</button>
+        </div>
+        <small class="hint">자동: 오후(12시~)에는 밤</small>
+      </section>
+      <section>
+        <h2>물</h2>
+        <div class="water-grid">
+          <label for="px">도트 크기</label><input id="px" type="range" min="2" max="10" value="2" />
+          <label for="speed">속도</label><input id="speed" type="range" min="0" max="2" step="0.1" value="0.5" />
+          <label for="dither">디더링</label><input id="dither" type="range" min="0" max="1.5" step="0.1" value="0.6" />
+          <label for="pal">팔레트 고정</label><input id="pal" type="checkbox" checked />
+          <label for="light">빛 = 마우스</label><input id="light" type="checkbox" checked />
+          <span>fps</span><span id="fps">-</span>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="/src/pool-main.js"></script>
   </body>
 </html>

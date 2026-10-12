@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개복치 수조</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- 물속 배경 -->
+    <div class="water">
+      <div class="light"></div>
+      <div class="bubbles" id="bubbles"></div>
+    </div>
+
+    <!-- 수조: 개복치들이 들어가는 곳 -->
+    <main class="tank" id="tank"></main>
+
+    <!-- 입장 화면 -->
+    <section class="enter" id="enter">
+      <form class="enter-card" id="enter-form">
+        <h1>개복치 수조</h1>
+        <p>이름을 정하고 수조에 들어가요</p>
+        <input id="name-input" type="text" maxlength="12" placeholder="이름 (최대 12자)" autocomplete="off" required />
+        <button type="submit">입장하기</button>
+      </form>
+    </section>
+
+    <!-- 하단 채팅 입력창 -->
+    <form class="chat-bar hidden" id="chat-form">
+      <input id="chat-input" type="text" maxlength="60" placeholder="개복치에게 말 시키기…" autocomplete="off" />
+      <button type="submit">보내기</button>
+      <button type="button" class="game-btn" id="game-btn">게임 하자</button>
+    </form>
+
+    <!-- 게임 고르기 -->
+    <div class="game-picker hidden" id="game-picker">
+      <p>어떤 게임 할까요?</p>
+      <button type="button" data-game="zone">멍때리기</button>
+      <button type="button" data-game="wipe">김 서린 창 닦기</button>
+      <button type="button" class="ghost" id="game-picker-cancel">취소</button>
+    </div>
+
+    <!-- 게임 제안 배너 (10초) -->
+    <div class="game-banner hidden" id="game-banner">
+      <div class="game-banner-row">
+        <div>
+          <strong id="game-banner-text"></strong>
+          <small id="game-banner-sub"></small>
+        </div>
+        <button type="button" id="game-join">참여</button>
+        <span class="game-joined hidden" id="game-joined">참여함 ✓</span>
+      </div>
+      <div class="game-banner-track"><div class="game-banner-bar" id="game-banner-bar"></div></div>
+    </div>
+
+    <!-- 김 서린 창 닦기: 풍경 + 김 -->
+    <section class="wipe-stage hidden" id="wipe-stage">
+      <canvas class="wipe-scene" id="wipe-scene"></canvas>
+      <canvas class="wipe-fog" id="wipe-fog"></canvas>
+    </section>
+
+    <!-- 게임 진행 상황 (멍때리기 / 창 닦기 공용) -->
+    <div class="zone-hud hidden" id="zone-hud">
+      <div class="zone-hud-top">
+        <strong id="zone-hud-title">멍때리기</strong>
+        <span class="zone-hud-time" id="zone-hud-time">0:00</span>
+        <span id="zone-hud-count"></span>
+      </div>
+      <small id="zone-hud-msg"></small>
+    </div>
+
+    <!-- 게임 결과 -->
+    <div class="game-result hidden" id="game-result">
+      <strong id="game-result-text"></strong>
+    </div>
+
+
+    <!-- 상태 안내 -->
+    <div class="status hidden" id="status"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

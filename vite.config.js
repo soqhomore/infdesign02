@@ -1,13 +1,13 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
 
-// 수조(index.html) + 도트 수조 셰이더 테스트(pool.html)
+// 메인(index.html) = 도트 수조판, classic.html = 예전 파스텔 수조
 export default defineConfig({
   build: {
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        pool: resolve(__dirname, 'pool.html'),
+        classic: resolve(__dirname, 'classic.html'),
       },
     },
   },

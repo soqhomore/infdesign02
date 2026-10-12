@@ -32,9 +32,17 @@ npm run dev
 `.mcp.json`은 `.gitignore`에 들어 있어서 토큰이 깃에 올라가지 않아요.
 참고: Claude Code에 설치된 공식 Figma 플러그인을 쓰면 토큰 없이 `/mcp`에서 로그인(OAuth)만 해도 돼요.
 
+## 페이지
+
+- `/` (`index.html`) – 도트 수조판: WebGL 셰이더 물 + 개복치, 검은 알약 UI, 밤 모드, 설정(닉네임·색·물)
+- `/classic.html` – 예전 파스텔 수조
+
 ## 파일
 
-- `src/main.js` – 입장, 채팅 입력
+- `src/pool-main.js` – (도트판) 입장, 채팅, HUD, 설정, 밤 모드
+- `src/pool.js` – (도트판) 물 셰이더, 개복치 그리기·이름표·말풍선
+- `src/pool.css` – (도트판) 검은 알약 UI
+- `src/main.js` – (예전판) 입장, 채팅 입력
 - `src/realtime.js` – Supabase 채널 (Presence = 접속자 개복치, Broadcast = 말풍선·게임 제안·기절·문지른 좌표)
 - `src/game.js` – 게임 제안: 고르기 → 10초 참여 모집 배너 → 참여자만 같은 시각(startAt)에 시작
   - 멍때리기: 준비 3초 뒤 입력(마우스·클릭·키·터치·휠)이 감지되면 기절 → Broadcast, 마지막 한 마리 승리
