@@ -3,11 +3,15 @@
 // 2) 참고 이미지에서 뽑은 14색 팔레트 + 바이어 디더링으로 줄인 뒤
 // 3) CSS image-rendering: pixelated 로 확대해서 도트 그림처럼 보이게 한다.
 
-// 참고 이미지(김 서린 파란 수영장)에서 뽑은 색 + 하이라이트
+// 참고 이미지(김 서린 파란 수영장)에서 뽑은 색 + 하이라이트 + 개복치 볼터치용 분홍 두 색
 const PALETTE = [
   '#020f33', '#021d55', '#022b74', '#013a91', '#004fa9', '#0464c4', '#0178da',
   '#0a8fe8', '#00a9fa', '#00c3fc', '#4fd6ff', '#9ae6ff', '#d8f6ff', '#ffffff',
+  '#e9799a', '#ffb3c6',
 ]
+// 개복치 스프라이트: 원본은 도트 1칸이 약 8.5px로 확대된 그림 → 원래 도트 크기로 되돌려서 씀
+const FISH_FRAMES = ['/fish/fish-left01.png', '/fish/fish-left02.png', '/fish/fish-left-eyesclosed.png']
+const FISH_ART_PX = 8.5
 const MAX_RIPPLES = 8
 
 const VERT = `
@@ -24,6 +28,19 @@ uniform float uDither;
 uniform float uQuant;      // 1 = 팔레트로 줄이기
 uniform vec3 uPal[${PALETTE.length}];
 uniform vec4 uRip[${MAX_RIPPLES}]; // 물결: x, y, 시작 시각, 세기
+uniform sampler2D uFish;   // 개복치 프레임들을 가로로 이어 붙인 그림
+uniform vec2 uFishCorner;  // 개복치 칸의 왼쪽 위 (저해상도 픽셀 좌표)
+uniform vec2 uFishCell;    // 한 프레임 칸 크기 (픽셀)
+uniform float uFishFrame, uFishFrames, uFishFlip, uFishOn;
+
+// 저해상도 픽셀 위치 px에서 개복치 그림 색 (도트 1칸 = 화면 도트 1칸)
+vec4 fishAt(vec2 px) {
+  if (uFishOn < 0.5) return vec4(0.0);
+  vec2 local = (floor(px) - uFishCorner + 0.5) / uFishCell;
+  if (local.x < 0.0 || local.y < 0.0 || local.x > 1.0 || local.y > 1.0) return vec4(0.0);
+  if (uFishFlip > 0.5) local.x = 1.0 - local.x;
+  return texture2D(uFish, vec2((uFishFrame + local.x) / uFishFrames, local.y));
+}
 
 // ---------- 노이즈 ----------
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -182,6 +199,12 @@ void main() {
   vec3 floorCol = albedo * lambert;
   floorCol *= 1.0 - 0.55 * rimShadow;
 
+  // 개복치 그림자: 수면 가까이 떠 있으니 빛 반대 방향으로 조금 밀려서 바닥에 진다
+  vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec2 shadowShift = -L.xy / max(L.z, 0.3) * (6.0 + 10.0 * fd);
+  float fishShadow = fishAt(fuv * uRes + shadowShift).a;
+  floorCol *= 1.0 - 0.5 * fishShadow;
+
   // ---------- 물빛 (caustics): 일렁이는 보로노이 경계선 두 겹 ----------
   // 깊을수록 빛이 모이는 거리가 길어져 무늬가 더 촘촘·강하게 접힘
   float k = 0.03 + 0.025 * fd;
@@ -197,8 +220,22 @@ void main() {
   vec3 tint = mix(shallow, mid, smoothstep(0.2, 0.55, fd));
   tint = mix(tint, deep, smoothstep(0.7, 1.0, fd));
 
+  caus *= 1.0 - 0.8 * fishShadow;
   vec3 col = floorCol * tint * 1.3;
   col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.42;
+
+  // ---------- 개복치 (물 표면 바로 아래) ----------
+  // 표면 일렁임은 개복치 전체를 1픽셀씩 흔들어서 표현 (JS에서) → 윤곽이 깨지지 않음
+  vec4 fish = fishAt(px);
+  float isFish = step(0.5, fish.a);
+  if (fish.a > 0.5) {
+    float lum = dot(fish.rgb, vec3(0.3, 0.59, 0.11));
+    vec3 fishCol = fish.rgb * (0.92 + 0.15 * max(L.z, 0.0));
+    fishCol = mix(fishCol, fishCol * vec3(0.85, 0.97, 1.08), 0.5); // 물속이라 아주 살짝 푸르게
+    fishCol += vec3(0.45, 0.85, 1.0) * caus * 0.1 * step(0.35, lum); // 밝은 몸 위로만 물빛
+    if (lum < 0.36) fishCol = vec3(0.008, 0.06, 0.2); // 테두리는 또렷하게
+    col = fishCol;
+  }
 
   // 깊은 띠의 빛줄기
   float band = smoothstep(0.17, 0.25, uv.y) * (1.0 - smoothstep(0.35, 0.5, uv.y));
@@ -222,7 +259,7 @@ void main() {
 
   // ---------- 도트화: 디더링 + 팔레트 ----------
   if (uQuant > 0.5) {
-    vec3 c = col + (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.11;
+    vec3 c = col + (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.11 * (1.0 - isFish); // 개복치는 디더 없이 깔끔하게
     vec3 best = uPal[0];
     float bd = 1e9;
     for (int i = 0; i < ${PALETTE.length}; i++) {
@@ -265,7 +302,8 @@ gl.enableVertexAttribArray(aPos)
 gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
 
 const U = {}
-for (const name of ['uRes', 'uTime', 'uLight', 'uDither', 'uQuant', 'uPal', 'uRip']) {
+for (const name of ['uRes', 'uTime', 'uLight', 'uDither', 'uQuant', 'uPal', 'uRip',
+  'uFish', 'uFishCorner', 'uFishCell', 'uFishFrame', 'uFishFrames', 'uFishFlip', 'uFishOn']) {
   U[name] = gl.getUniformLocation(prog, name)
 }
 gl.uniform3fv(U.uPal, PALETTE.flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)))
@@ -303,7 +341,114 @@ canvas.addEventListener('pointerdown', (e) => {
   const aspect = innerWidth / innerHeight
   ripples.set([(e.clientX / innerWidth) * aspect, e.clientY / innerHeight, simTime, 0.6], rippleIndex * 4)
   rippleIndex = (rippleIndex + 1) % MAX_RIPPLES
+  fish.target = [e.clientX / innerWidth, e.clientY / innerHeight] // 궁금해서 다가옴
+  fish.curious = 2.5
 })
+
+// ---------- 개복치 ----------
+// 프레임들을 원래 도트 크기로 줄여서 가로로 이어 붙인 텍스처를 만든다
+const fish = {
+  ready: false, cell: [0, 0],
+  pos: [0.55, 0.62], vel: [0, 0], target: [0.4, 0.6],
+  flip: 0, frame: 0, frameClock: 0, blinkUntil: 0, curious: 0,
+}
+Promise.all(FISH_FRAMES.map((src) => new Promise((ok, fail) => {
+  const img = new Image()
+  img.onload = () => ok(img)
+  img.onerror = fail
+  img.src = src
+}))).then((imgs) => {
+  const sizes = imgs.map((im) => [Math.round(im.width / FISH_ART_PX), Math.round(im.height / FISH_ART_PX)])
+  const cw = Math.max(...sizes.map((s) => s[0])) + 2
+  const ch = Math.max(...sizes.map((s) => s[1])) + 2
+  const atlas = document.createElement('canvas')
+  atlas.width = cw * imgs.length
+  atlas.height = ch
+  const ctx = atlas.getContext('2d')
+  // 원본 도트 한 칸의 가운데 색을 그대로 집어 오기 (평균 내면 색이 뭉개짐)
+  imgs.forEach((im, i) => {
+    const [w, h] = sizes[i]
+    const src = document.createElement('canvas')
+    src.width = im.width
+    src.height = im.height
+    const sctx = src.getContext('2d')
+    sctx.drawImage(im, 0, 0)
+    const sd = sctx.getImageData(0, 0, im.width, im.height).data
+    const out = ctx.createImageData(w, h)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const sx = Math.min(im.width - 1, Math.floor((x + 0.5) * im.width / w))
+        const sy = Math.min(im.height - 1, Math.floor((y + 0.5) * im.height / h))
+        out.data.set(sd.subarray((sy * im.width + sx) * 4, (sy * im.width + sx) * 4 + 4), (y * w + x) * 4)
+      }
+    }
+    // 가운데 정렬, 아래쪽(배 지느러미) 맞춤
+    ctx.putImageData(out, i * cw + Math.floor((cw - w) / 2), ch - h - 1)
+  })
+  // 반투명 가장자리를 없애고, 바깥에 1도트 테두리를 둘러서 물속에서도 윤곽이 또렷하게
+  const data = ctx.getImageData(0, 0, atlas.width, atlas.height)
+  const d = data.data
+  const W = atlas.width, Hh = atlas.height
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 110 ? 255 : 0
+  const solid = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && d[(y * W + x) * 4 + 3] === 255
+  const edge = []
+  for (let y = 0; y < Hh; y++) {
+    for (let x = 0; x < W; x++) {
+      if (solid(x, y)) continue
+      const cell = Math.floor(x / cw)
+      const same = (nx) => Math.floor(nx / cw) === cell
+      if ((same(x - 1) && solid(x - 1, y)) || (same(x + 1) && solid(x + 1, y)) || solid(x, y - 1) || solid(x, y + 1)) edge.push(y * W + x)
+    }
+  }
+  for (const i of edge) d.set([18, 30, 74, 255], i * 4)
+  ctx.putImageData(data, 0, 0)
+
+  const tex = gl.createTexture()
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, tex)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.uniform1i(U.uFish, 0)
+  gl.uniform1f(U.uFishFrames, imgs.length)
+  fish.cell = [cw, ch]
+  fish.ready = true
+})
+
+// 느긋하게 돌아다니다가, 목표에 닿으면 새 목표를 고른다
+function updateFish(dt, t) {
+  const aspect = innerWidth / innerHeight
+  const dx = (fish.target[0] - fish.pos[0]) * aspect
+  const dy = fish.target[1] - fish.pos[1]
+  const dist = Math.hypot(dx, dy)
+  if (dist < 0.03) {
+    fish.target = [0.12 + Math.random() * 0.76, 0.3 + Math.random() * 0.5]
+  }
+  const maxSpeed = fish.curious > 0 ? 0.16 : 0.07
+  const want = dist > 0 ? [(dx / dist) * maxSpeed, (dy / dist) * maxSpeed] : [0, 0]
+  fish.vel[0] += (want[0] - fish.vel[0]) * Math.min(1, dt * 1.5)
+  fish.vel[1] += (want[1] - fish.vel[1]) * Math.min(1, dt * 1.5)
+  fish.pos[0] += (fish.vel[0] / aspect) * dt
+  fish.pos[1] += fish.vel[1] * dt
+  fish.curious = Math.max(0, fish.curious - dt)
+
+  // 그림은 왼쪽을 봄 → 오른쪽으로 갈 때 뒤집기 (살짝 여유를 둬서 떨림 방지)
+  if (fish.vel[0] > 0.012) fish.flip = 1
+  else if (fish.vel[0] < -0.012) fish.flip = 0
+
+  // 빨리 갈수록 지느러미를 빨리 침
+  const speed = Math.hypot(fish.vel[0], fish.vel[1])
+  fish.frameClock += dt * (2.5 + speed * 40)
+  if (!fish.blinkUntil && Math.random() < dt * 0.25) fish.blinkUntil = t + 0.18
+  let frame = Math.floor(fish.frameClock) % 2
+  if (fish.blinkUntil) {
+    if (t > fish.blinkUntil) fish.blinkUntil = 0
+    else frame = 2
+  }
+  fish.frame = frame
+}
 
 // ---------- 그리기 ----------
 let last = performance.now()
@@ -321,6 +466,18 @@ function frame(now) {
   gl.uniform1f(U.uDither, Number(ui.dither.value))
   gl.uniform1f(U.uQuant, ui.pal.checked ? 1 : 0)
   gl.uniform4fv(U.uRip, ripples)
+  if (fish.ready) {
+    updateFish(dt * Number(ui.speed.value), simTime)
+    const bob = Math.sin(simTime * 2.2) * 1.2 // 위아래로 1~2픽셀 둥실
+    const wobble = Math.sin(simTime * 3.1) * Math.sin(simTime * 1.7) * 0.9 // 물결에 좌우로 살짝
+    gl.uniform2f(U.uFishCorner,
+      Math.round(fish.pos[0] * canvas.width - fish.cell[0] / 2 + wobble),
+      Math.round(fish.pos[1] * canvas.height - fish.cell[1] / 2 + bob))
+    gl.uniform2f(U.uFishCell, fish.cell[0], fish.cell[1])
+    gl.uniform1f(U.uFishFrame, fish.frame)
+    gl.uniform1f(U.uFishFlip, fish.flip)
+  }
+  gl.uniform1f(U.uFishOn, fish.ready ? 1 : 0)
   gl.drawArrays(gl.TRIANGLES, 0, 3)
 
   frames++
