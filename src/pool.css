@@ -102,6 +102,8 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   height: 88px;
   pointer-events: none;
   text-align: center;
+  transform: scale(0.5); /* Figma 크기의 1/2 */
+  transform-origin: top center;
   white-space: nowrap;
 }
 .topbar {
@@ -265,7 +267,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .game-picker p { margin: 0 0 4px; text-align: center; font-size: 18px; }
 
 /* ---------- 게임 제안 배너 · 진행 상황 ---------- */
-.game-banner, .zone-hud { top: 124px; }
+.game-banner, .zone-hud { top: 80px; }
 .game-banner-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .game-banner strong { display: block; font-weight: normal; font-size: 20px; }
 .game-banner small, .zone-hud small { color: var(--muted); font-size: 14px; }
@@ -340,10 +342,10 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 /* ---------- 우상단 설정 ---------- */
 .settings-btn {
   position: fixed;
-  top: 50px;
+  top: 30px; /* 반으로 줄인 시계 캡슐과 같은 높이 */
   right: 24px;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--pill);
   color: var(--on-pill);
@@ -356,7 +358,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .settings-btn[aria-expanded='true'] { transform: rotate(60deg); }
 .settings {
   position: fixed;
-  top: 104px;
+  top: 76px;
   right: 24px;
   width: min(300px, calc(100% - 32px));
   box-sizing: border-box;
@@ -418,10 +420,8 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 
 /* ---------- 좁은 화면 ---------- */
 @media (max-width: 760px) {
-  .hud { transform: scale(0.8); transform-origin: top center; }
-  .game-banner, .zone-hud { top: 104px; }
+  .game-banner, .zone-hud { top: 80px; }
   .chat .game-btn { padding: 0 12px; }
-  /* 좁은 화면에선 위가 시계로 꽉 차서 오른쪽 아래(채팅 위)로 */
-  .settings-btn { top: auto; bottom: 80px; right: 16px; }
-  .settings { top: auto; bottom: 132px; right: 16px; }
+  .settings-btn { right: 16px; }
+  .settings { right: 16px; }
 }

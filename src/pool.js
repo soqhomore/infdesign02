@@ -394,7 +394,23 @@ canvas.addEventListener('pointerdown', (e) => {
   const aspect = innerWidth / innerHeight
   ripples.set([(e.clientX / innerWidth) * aspect, e.clientY / innerHeight, simTime, 0.6], rippleIndex * 4)
   rippleIndex = (rippleIndex + 1) % MAX_RIPPLES
+  lookAtViewer(e.clientX / innerWidth, e.clientY / innerHeight)
 })
+
+// 수면을 톡 치면 개복치들이 정면(보는 사람 쪽)을 쳐다본다. 물결이 닿는 순서대로 가까운 개복치부터
+const LOOK_MS = 1500
+function lookAtViewer(x, y) {
+  const now = performance.now()
+  const t = Date.now() / 1000
+  const aspect = innerWidth / innerHeight
+  for (const f of fishes.values()) {
+    if (f.fainted) continue
+    const [fx, fy] = pathAt(f.seeds, t)
+    const delay = Math.hypot((fx - x) * aspect, fy - y) * 700
+    f.lookFrom = now + delay
+    f.lookUntil = now + delay + LOOK_MS
+  }
+}
 
 // ---------- 개복치 스프라이트 ----------
 // 프레임들을 원래 도트 크기로 줄여서 가로로 이어 붙인 텍스처를 만든다
@@ -519,7 +535,7 @@ export function addFish(layer, { id, name, hue }, isMe) {
     id, isMe, label, bubble,
     seeds: seedsOf(id),
     hue: hueOf(id, hue),
-    flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, bubbleTimer: null,
+    flip: 0, turnUntil: 0, blinkUntil: 0, talkUntil: 0, lookFrom: 0, lookUntil: 0, bubbleTimer: null,
     fainted: false, faintPos: null,
   })
 }
@@ -585,7 +601,8 @@ function fishFrame(f, now, t) {
     if (f.blinkUntil && now > f.blinkUntil) f.blinkUntil = 0
 
     frame = Math.floor(t * 3 + f.seeds[3] * 10) % 2 ? F.swim2 : F.swim1
-    if (now < f.talkUntil) frame = Math.floor(now / 160) % 2 ? F.talk : F.swim1
+    if (now >= f.lookFrom && now < f.lookUntil) frame = F.front // 정면 쳐다보기
+    else if (now < f.talkUntil) frame = Math.floor(now / 160) % 2 ? F.talk : F.swim1
     else if (now < f.turnUntil) frame = F.front
     else if (f.blinkUntil) frame = F.blink
   }
