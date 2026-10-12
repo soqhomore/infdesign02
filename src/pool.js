@@ -174,32 +174,6 @@ void main() {
   vec3 albedo = vec3(0.62, 0.86, 1.0);
   vec3 fN = vec3(0.0, 0.0, 1.0);
 
-  // 왼쪽 아래 자갈 더미: 도트 그림처럼 명암 3단계로 (둥근 덩어리가 뭉개져 보이지 않게)
-  // 돌 하나하나가 통째로 들어가거나 빠지도록, 돌(보로노이 칸) 중심이 더미 안에 있는지로 판단
-  float stoneMask = 0.0;
-  float pileMask = 0.0;
-  vec2 pileCenter = vec2(0.2 * aspect, 0.75);
-  vec4 v = voronoi(fp * 9.0, 0.0);
-  vec2 cellCenter = v.zw / 9.0;
-  vec2 pc = (cellCenter - pileCenter) * vec2(0.9, 1.25);
-  if (length(pc) + 0.05 * (hash(v.zw) - 0.5) < 0.22) {
-    pileMask = 1.0;
-    float gap = v.y - v.x; // 이웃 돌과의 경계까지
-    if (gap > 0.09) {
-      stoneMask = 1.0;
-      vec2 local = (fp * 9.0 - v.zw) / max(0.35, 0.55 * v.y);
-      float r2 = min(dot(local, local), 1.0);
-      vec3 sN = normalize(vec3(local, sqrt(1.0 - r2)));
-      float lit = dot(sN, L);
-      float tone = (hash(floor(v.zw * 7.0)) - 0.5) * 0.08;
-      vec3 dark = vec3(0.08, 0.18, 0.46), body = vec3(0.17, 0.34, 0.7), light = vec3(0.34, 0.58, 0.92);
-      albedo = (lit > 0.78 ? light : lit > 0.35 ? body : dark) + tone;
-      if (gap < 0.17) albedo = dark * 0.85; // 돌 테두리
-    } else {
-      albedo = vec3(0.04, 0.1, 0.32); // 돌 사이 틈
-    }
-  }
-
   // 수조 턱 (아래): 밝은 타일 + 경계 그림자/하이라이트
   float rimY = 0.87 + 0.004 * sin(fuv.x * 37.0 + t * 0.9);
   float rimShadow = smoothstep(0.018, 0.0, abs(fuv.y - (rimY - 0.008)));
@@ -207,17 +181,10 @@ void main() {
   if (fuv.y > rimY) albedo = vec3(0.7, 0.9, 1.0);
 
   float lambert = 0.35 + 0.65 * max(dot(fN, L), 0.0);
-  vec3 floorCol = pileMask > 0.0 ? albedo * 1.15 : albedo * lambert; // 자갈은 이미 명암을 넣었음
+  vec3 floorCol = albedo * lambert;
   floorCol *= 1.0 - 0.55 * rimShadow;
 
-  // 개복치 그림자: 수면 가까이 떠 있으니 빛 반대 방향으로 조금 밀려서 바닥에 진다
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
-  // 개복치 모양 그대로 그리면 개복치가 둘로 보여서, 둥글고 옅은 그림자로
-  vec2 shadowShift = -L.xy / max(L.z, 0.3) * (3.0 + 6.0 * fd);
-  vec2 fishCenter = uFishCorner + uFishCell * vec2(0.5, 0.55);
-  vec2 sq = (floor(fuv * uRes) + shadowShift - fishCenter) / (uFishCell * vec2(0.34, 0.26));
-  float fishShadow = uFishOn * (1.0 - smoothstep(0.75, 1.0, length(sq)));
-  floorCol *= 1.0 - 0.45 * fishShadow;
 
   // ---------- 물빛 (caustics): 일렁이는 보로노이 경계선 두 겹 ----------
   // 깊을수록 빛이 모이는 거리가 길어져 무늬가 더 촘촘·강하게 접힘
@@ -234,9 +201,8 @@ void main() {
   vec3 tint = mix(shallow, mid, smoothstep(0.2, 0.55, fd));
   tint = mix(tint, deep, smoothstep(0.7, 1.0, fd));
 
-  caus *= 1.0 - 0.6 * fishShadow;
   vec3 col = floorCol * tint * 1.3;
-  col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.55 * (1.0 - 0.5 * stoneMask);
+  col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.55;
 
   // ---------- 개복치 (물 표면 바로 아래) ----------
   // 표면 일렁임은 개복치 전체를 1픽셀씩 흔들어서 표현 (JS에서) → 윤곽이 깨지지 않음
