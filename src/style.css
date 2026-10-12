@@ -85,8 +85,8 @@ html, body {
   animation: bob var(--bob-dur, 5s) ease-in-out var(--bob-delay, 0s) infinite;
 }
 @keyframes bob {
-  0%, 100% { transform: translateY(-12px) rotate(-3deg); }
-  50%      { transform: translateY(12px) rotate(3deg); }
+  0%, 100% { transform: translateY(-5px) rotate(-3deg); }
+  50%      { transform: translateY(5px) rotate(3deg); }
 }
 .fish-body {
   display: flex;
@@ -94,7 +94,7 @@ html, body {
   align-items: center;
 }
 .sunfish-box {
-  height: 162px;
+  height: 49px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -338,7 +338,7 @@ button.ghost:hover { background: #f1f4ff; }
 .fish.fainted .fish-name::after { content: ' · 기절'; }
 @keyframes faint-float {
   from { transform: translateY(0) rotate(-8deg); }
-  to   { transform: translateY(-18px) rotate(8deg); }
+  to   { transform: translateY(-7px) rotate(8deg); }
 }
 
 .game-result {
