@@ -11,6 +11,15 @@ const PALETTE = [
   '#0a8fe8', '#00a9fa', '#00c3fc', '#4fd6ff', '#9ae6ff', '#d8f6ff', '#ffffff',
   '#e9799a', '#ffb3c6',
 ]
+// 밤: 어두운 남색 단계 + 달빛 하이라이트 + 개복치 빛무리용 은은한 색 몇 개
+const PALETTE_NIGHT = [
+  '#00040f', '#010a1f', '#03122f', '#061b40', '#0a2552', '#0e3166', '#123f7a', '#1a5290',
+  '#2468a6', '#3a85bf', '#5aa5d6', '#8cc6ea', '#c4e4f7', '#ffffff',
+  '#4a3a8f', '#2f7f86', '#8a4f8c', '#a08a4a',
+]
+// 셰이더 배열 크기를 맞추려고 짧은 쪽은 마지막 색으로 채움
+const PAL_N = Math.max(PALETTE.length, PALETTE_NIGHT.length)
+const padPal = (p) => [...p, ...Array(PAL_N - p.length).fill(p[p.length - 1])]
 // 개복치 스프라이트: 원본은 도트 1칸이 약 8.5px로 확대된 그림 → 원래 도트 크기로 되돌려서 씀
 // 0, 1: 헤엄 / 2: 눈 깜빡 / 3: 입 벌림(말할 때) / 4: 정면(돌아설 때) / 5: 뒤집힘(기절)
 const FISH_FRAMES = [
@@ -34,7 +43,9 @@ uniform float uTime;
 uniform vec3 uLight;       // 해(빛) 방향
 uniform float uDither;
 uniform float uQuant;      // 1 = 팔레트로 줄이기
-uniform vec3 uPal[${PALETTE.length}];
+uniform vec3 uPal[${PAL_N}];
+uniform vec3 uPalNight[${PAL_N}];
+uniform float uNight;      // 0 낮 ~ 1 밤 (부드럽게 바뀜)
 uniform vec4 uRip[${MAX_RIPPLES}]; // 물결: x, y, 시작 시각, 세기
 uniform sampler2D uFish;   // 개복치 프레임들을 가로로 이어 붙인 그림
 uniform vec2 uFishCell;    // 한 프레임 칸 크기 (픽셀)
@@ -64,6 +75,18 @@ vec4 fishAt(vec2 px, out float hue) {
     if (c.a > 0.5) { hit = c; hue = uFishHue[i]; }
   }
   return hit;
+}
+
+// 밤에 개복치 주변이 은은하게 빛나도록: 각 개복치 중심에서 퍼지는 빛 (개복치 색 따라)
+vec3 fishGlow(vec2 px) {
+  vec3 g = vec3(0.0);
+  for (int i = 0; i < ${MAX_FISH}; i++) {
+    if (float(i) >= uFishCount) break;
+    vec2 center = uFishA[i].xy + uFishCell * 0.5;
+    float d = length(floor(px) + 0.5 - center) / (uFishCell.x * 0.95);
+    g += hueRotate(vec3(0.42, 0.8, 1.0), uFishHue[i]) * exp(-d * d * 2.2);
+  }
+  return g;
 }
 
 // ---------- 노이즈 ----------
@@ -219,14 +242,24 @@ void main() {
   caus *= 0.55 + 0.9 * fbm3(fp * 2.5 + vec2(t * 0.05, 0.0));
 
   // ---------- 물 색 (깊이에 따라 흡수) ----------
-  vec3 shallow = vec3(0.05, 0.66, 1.0);
-  vec3 mid = vec3(0.0, 0.26, 0.7);
-  vec3 deep = vec3(0.0, 0.09, 0.32);
+  float n = uNight;
+  vec3 shallow = mix(vec3(0.05, 0.66, 1.0), vec3(0.03, 0.22, 0.42), n);
+  vec3 mid = mix(vec3(0.0, 0.26, 0.7), vec3(0.01, 0.1, 0.27), n);
+  vec3 deep = mix(vec3(0.0, 0.09, 0.32), vec3(0.0, 0.025, 0.1), n);
   vec3 tint = mix(shallow, mid, smoothstep(0.2, 0.55, fd));
   tint = mix(tint, deep, smoothstep(0.7, 1.0, fd));
 
   vec3 col = floorCol * tint * 1.3;
-  col += vec3(0.45, 0.85, 1.0) * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * 0.55;
+  // 물빛: 밤에는 희미한 달빛
+  vec3 causCol = mix(vec3(0.45, 0.85, 1.0), vec3(0.5, 0.7, 1.0), n);
+  col += causCol * caus * (0.04 + 0.96 * pow(1.0 - fd, 2.2)) * mix(0.55, 0.2, n);
+
+  // 밤: 물속에 떠다니는 작은 빛 알갱이가 가끔 반짝
+  float speck = hash(floor(px / 3.0) + floor(t * 0.2) * 7.0);
+  col += vec3(0.5, 0.9, 1.0) * step(0.995, speck) * (0.5 + 0.5 * sin(t * 4.0 + speck * 90.0)) * n * 0.7;
+
+  // 밤: 개복치 주변 빛무리 (팔레트·디더링을 거쳐 도트로 번짐)
+  col += fishGlow(px) * n * 0.5;
 
   // ---------- 개복치 (물 표면 바로 아래) ----------
   // 표면 일렁임은 개복치 전체를 1픽셀씩 흔들어서 표현 (JS에서) → 윤곽이 깨지지 않음
@@ -239,6 +272,7 @@ void main() {
     fishCol = hueRotate(fish.rgb, fishHue) * (0.92 + 0.15 * max(L.z, 0.0));
     fishCol = mix(fishCol, fishCol * vec3(0.85, 0.97, 1.08), 0.5); // 물속이라 아주 살짝 푸르게
     fishCol += vec3(0.45, 0.85, 1.0) * caus * 0.1 * step(0.35, lum); // 밝은 몸 위로만 물빛
+    fishCol *= mix(1.0, 0.92, n);
     if (lum < 0.36) fishCol = vec3(0.008, 0.06, 0.2); // 테두리는 또렷하게
     col = fishCol;
   }
@@ -246,32 +280,33 @@ void main() {
   // 깊은 띠의 빛줄기
   float band = smoothstep(0.17, 0.25, uv.y) * (1.0 - smoothstep(0.35, 0.5, uv.y));
   float streak = pow(noise(vec2(uv.x * 38.0 + uv.y * 9.0, t * 0.25)), 5.0);
-  col += vec3(0.3, 0.6, 1.0) * streak * band * 0.6;
+  col += vec3(0.3, 0.6, 1.0) * streak * band * mix(0.6, 0.15, n);
 
   // 수조 턱 하이라이트
-  col += vec3(0.6, 0.9, 1.0) * rimLight * 0.5;
+  col += vec3(0.6, 0.9, 1.0) * rimLight * mix(0.5, 0.25, n);
 
   // ---------- 표면: 하늘 반사 + 반짝임 ----------
   vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
   float nh = max(dot(N, H), 0.0);
-  col += vec3(0.08, 0.22, 0.5) * (1.0 - N.z) * 6.0;
-  col += vec3(0.5, 0.8, 1.0) * pow(nh, 30.0) * 0.18;
+  col += mix(vec3(0.08, 0.22, 0.5), vec3(0.02, 0.05, 0.14), n) * (1.0 - N.z) * 6.0;
+  col += vec3(0.5, 0.8, 1.0) * pow(nh, 30.0) * mix(0.18, 0.08, n);
   float glint = smoothstep(0.5, 0.85, pow(nh, 120.0));
   glint *= 0.5 + 0.5 * smoothstep(0.5, 0.9, d) + 0.4 * smoothstep(0.55, 1.0, uv.x);
   col += vec3(1.0) * glint;
 
   // 가장자리 살짝 어둡게
-  col *= 1.0 - 0.25 * pow(length(uv - 0.5) * 1.2, 2.5);
+  col *= 1.0 - mix(0.25, 0.45, n) * pow(length(uv - 0.5) * 1.2, 2.5);
 
   // ---------- 도트화: 디더링 + 팔레트 ----------
   if (uQuant > 0.5) {
     vec3 c = col + (bayer4(gl_FragCoord.xy) - 0.5) * uDither * 0.11 * (1.0 - isFish); // 개복치는 디더 없이 깔끔하게
-    vec3 best = uPal[0];
+    vec3 best = vec3(0.0);
     float bd = 1e9;
-    for (int i = 0; i < ${PALETTE.length}; i++) {
-      vec3 q = c - uPal[i];
+    for (int i = 0; i < ${PAL_N}; i++) {
+      vec3 pc = n > 0.5 ? uPalNight[i] : uPal[i];
+      vec3 q = c - pc;
       float dd = dot(q * vec3(0.8, 1.0, 0.6), q); // 사람 눈에 맞춘 가중치
-      if (dd < bd) { bd = dd; best = uPal[i]; }
+      if (dd < bd) { bd = dd; best = pc; }
     }
     col = best;
   }
@@ -312,10 +347,21 @@ gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
 
 const U = {}
 for (const name of ['uRes', 'uTime', 'uLight', 'uDither', 'uQuant', 'uPal', 'uRip',
-  'uFish', 'uFishCell', 'uFishFrames', 'uFishCount', 'uFishA', 'uFishHue']) {
+  'uFish', 'uFishCell', 'uFishFrames', 'uFishCount', 'uFishA', 'uFishHue', 'uNight', 'uPalNight']) {
   U[name] = gl.getUniformLocation(prog, name)
 }
-gl.uniform3fv(U.uPal, PALETTE.flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)))
+const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+gl.uniform3fv(U.uPal, padPal(PALETTE).flatMap(rgbOf))
+gl.uniform3fv(U.uPalNight, padPal(PALETTE_NIGHT).flatMap(rgbOf))
+
+// ---------- 밤 ----------
+let night = 0
+let nightTarget = 0
+// instant: 처음 열 때는 낮→밤으로 서서히 바뀌는 걸 보여 줄 필요가 없으니 바로
+export function setNight(on, instant = false) {
+  nightTarget = on ? 1 : 0
+  if (instant) night = nightTarget
+}
 
 // ---------- 물 설정 (설정 카드 안의 입력들) ----------
 const $ = (id) => document.getElementById(id)
@@ -560,6 +606,8 @@ function draw(now) {
 
   gl.uniform2f(U.uRes, canvas.width, canvas.height)
   gl.uniform1f(U.uTime, simTime)
+  night += (nightTarget - night) * Math.min(1, dt * 1.5) // 1~2초에 걸쳐 바뀜
+  gl.uniform1f(U.uNight, night)
   gl.uniform3fv(U.uLight, light)
   gl.uniform1f(U.uDither, Number(ui.dither.value))
   gl.uniform1f(U.uQuant, ui.pal.checked ? 1 : 0)

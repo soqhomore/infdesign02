@@ -101,6 +101,15 @@
         <div class="swatches" id="swatches"></div>
       </section>
       <section>
+        <h2>밤 모드</h2>
+        <div class="segmented" id="theme-mode" role="radiogroup" aria-label="밤 모드">
+          <button type="button" role="radio" data-mode="auto">자동</button>
+          <button type="button" role="radio" data-mode="day">낮</button>
+          <button type="button" role="radio" data-mode="night">밤</button>
+        </div>
+        <small class="hint">자동: 오후(12시~)에는 밤</small>
+      </section>
+      <section>
         <h2>물</h2>
         <div class="water-grid">
           <label for="px">도트 크기</label><input id="px" type="range" min="2" max="10" value="2" />

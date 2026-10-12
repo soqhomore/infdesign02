@@ -12,12 +12,33 @@
 }
 
 :root {
-  --black: #000;
-  --white: #fff;
-  --muted: rgba(255, 255, 255, 0.55);
+  /* 낮: 검은 알약에 흰 글씨 / 밤: 색 반전 (아래 [data-theme='night']) */
+  --pill: #000;
+  --on-pill: #fff;
+  --pill-rgb: 0, 0, 0;
+  --on-rgb: 255, 255, 255;
+  --field: #1a1a1a;
+  --hover: #222;
+  --light-hover: #e7e7e7;
+  --muted: rgba(var(--on-rgb), 0.55);
   --font: 'EF_cucumbersalad', sans-serif;
   --talk: 'DreamHeumul', sans-serif;
 }
+:root[data-theme='night'] {
+  --pill: #fff;
+  --on-pill: #000;
+  --pill-rgb: 255, 255, 255;
+  --on-rgb: 0, 0, 0;
+  --field: #ececec;
+  --hover: #e4e4e4;
+  --light-hover: #222;
+}
+/* 낮↔밤 바뀔 때 부드럽게 */
+.pill, .clock, .card, .chat input, .chat button, .bubble, .fish-label, .settings, .settings-btn,
+.enter-card, .game-result, .status, button.light {
+  transition: background-color 0.8s ease, color 0.8s ease, box-shadow 0.8s ease;
+}
+.bubble::after { transition: border-top-color 0.8s ease; }
 
 html, body {
   margin: 0;
@@ -25,7 +46,7 @@ html, body {
   overflow: hidden;
   background: #021d55;
   font-family: var(--font);
-  color: var(--white);
+  color: var(--on-pill);
 }
 .hidden { display: none !important; }
 
@@ -48,16 +69,16 @@ button, input {
 }
 button { cursor: pointer; }
 button:disabled { opacity: 0.45; cursor: default; }
-button.light { background: var(--white); color: var(--black); border-radius: 20px; padding: 10px 18px; }
-button.light:hover { background: #e7e7e7; }
+button.light { background: var(--on-pill); color: var(--pill); border-radius: 20px; padding: 10px 18px; }
+button.light:hover { background: var(--light-hover); }
 button.outline {
   background: transparent;
-  color: var(--white);
+  color: var(--on-pill);
   border-radius: 20px;
   padding: 10px 18px;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 0 1.5px rgba(var(--on-rgb), 0.6);
 }
-button.outline:hover { background: rgba(255, 255, 255, 0.12); }
+button.outline:hover { background: rgba(var(--on-rgb), 0.12); }
 button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 
 /* 검은 카드 (배너·진행 상황·게임 고르기) */
@@ -69,7 +90,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   box-sizing: border-box;
   padding: 14px 20px;
   border-radius: 24px;
-  background: var(--black);
+  background: var(--pill);
 }
 
 /* ---------- 위: 시계 캡슐 (Figma 90:63) ---------- */
@@ -101,7 +122,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--black);
+  background: var(--pill);
   font-size: 20px;
   overflow: hidden;
 }
@@ -121,7 +142,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   justify-content: center;
   gap: 10px;
   border-radius: 40px;
-  background: var(--black);
+  background: var(--pill);
   font-size: 32px;
   letter-spacing: -1.6px;
   overflow: hidden;
@@ -135,11 +156,11 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   transform: translateX(-50%);
   padding: 3px 10px;
   border-radius: 10px;
-  background: var(--black);
+  background: var(--pill);
   font-size: 13px;
   white-space: nowrap;
 }
-.fish-label.me { background: var(--white); color: var(--black); }
+.fish-label.me { background: var(--on-pill); color: var(--pill); }
 .fish-label.fainted::after { content: ' · 기절'; }
 .bubble {
   position: absolute;
@@ -147,7 +168,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   width: max-content;
   padding: 9px 16px;
   border-radius: 20px;
-  background: var(--black);
+  background: var(--pill);
   font-family: var(--talk);
   font-size: 20px;
   line-height: 1.3;
@@ -161,7 +182,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   left: 50%;
   top: 100%;
   border: 8px solid transparent;
-  border-top-color: var(--black);
+  border-top-color: var(--pill);
   transform: translateX(-50%);
 }
 
@@ -178,14 +199,14 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .chat input, .chat button {
   height: 44px;
   box-sizing: border-box;
-  background: var(--black);
-  color: var(--white);
+  background: var(--pill);
+  color: var(--on-pill);
 }
 .chat input { flex: 1; min-width: 0; padding: 0 20px; border-radius: 20px 0 0 20px; font-family: var(--talk); font-size: 19px; }
-.chat input::placeholder { color: rgba(255, 255, 255, 0.45); }
-.chat input:focus { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3); }
+.chat input::placeholder { color: rgba(var(--on-rgb), 0.45); }
+.chat input:focus { box-shadow: inset 0 0 0 2px rgba(var(--on-rgb), 0.3); }
 .chat button { padding: 0 18px; white-space: nowrap; }
-.chat button:hover:not(:disabled) { background: #222; }
+.chat button:hover:not(:disabled) { background: var(--hover); }
 .chat .game-btn { border-radius: 0 20px 20px 0; display: flex; align-items: center; gap: 8px; }
 .game-btn i { width: 8px; height: 8px; border-radius: 50%; background: #ff8fb1; }
 
@@ -197,7 +218,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   max-width: calc(100% - 32px);
   padding: 6px 14px;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(var(--pill-rgb), 0.75);
   font-size: 14px;
   text-align: center;
 }
@@ -216,7 +237,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   box-sizing: border-box;
   padding: 32px 28px;
   border-radius: 40px;
-  background: var(--black);
+  background: var(--pill);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -227,11 +248,11 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
 .enter-card input {
   padding: 12px 18px;
   border-radius: 20px;
-  background: #1a1a1a;
-  color: var(--white);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+  background: var(--field);
+  color: var(--on-pill);
+  box-shadow: inset 0 0 0 1.5px rgba(var(--on-rgb), 0.2);
 }
-.enter-card input:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+.enter-card input:focus { box-shadow: inset 0 0 0 1.5px rgba(var(--on-rgb), 0.6); }
 
 /* ---------- 게임 고르기 ---------- */
 .game-picker {
@@ -254,10 +275,10 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   margin-top: 10px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(var(--on-rgb), 0.18);
   overflow: hidden;
 }
-.game-banner-bar { height: 100%; background: var(--white); transform-origin: left; }
+.game-banner-bar { height: 100%; background: var(--on-pill); transform-origin: left; }
 
 .zone-hud { text-align: center; pointer-events: none; }
 .zone-hud-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -274,7 +295,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   max-width: calc(100% - 32px);
   padding: 22px 36px;
   border-radius: 40px;
-  background: var(--black);
+  background: var(--pill);
   text-align: center;
   pointer-events: none;
 }
@@ -304,14 +325,14 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--black);
-  color: var(--white);
+  background: var(--pill);
+  color: var(--on-pill);
   display: grid;
   place-items: center;
   padding: 0;
   transition: transform 0.3s ease;
 }
-.settings-btn:hover { background: #222; }
+.settings-btn:hover { background: var(--hover); }
 .settings-btn[aria-expanded='true'] { transform: rotate(60deg); }
 .settings {
   position: fixed;
@@ -321,7 +342,7 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   box-sizing: border-box;
   padding: 18px 20px 16px;
   border-radius: 24px;
-  background: var(--black);
+  background: var(--pill);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -333,21 +354,37 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   min-width: 0;
   padding: 8px 14px;
   border-radius: 16px;
-  background: #1a1a1a;
-  color: var(--white);
+  background: var(--field);
+  color: var(--on-pill);
   font-size: 18px;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1.5px rgba(var(--on-rgb), 0.2);
 }
-.name-row input:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+.name-row input:focus { box-shadow: inset 0 0 0 1.5px rgba(var(--on-rgb), 0.6); }
 .name-row button { padding: 8px 14px; border-radius: 16px; font-size: 18px; }
 .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
 .swatches button {
   aspect-ratio: 1;
   border-radius: 50%;
   padding: 0;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(var(--pill-rgb), 0.35);
 }
-.swatches button[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--black), 0 0 0 4px var(--white); }
+.swatches button[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--pill), 0 0 0 4px var(--on-pill); }
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  border-radius: 16px;
+  background: var(--field);
+}
+.segmented button {
+  padding: 6px 0;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 17px;
+}
+.segmented button[aria-checked='true'] { background: var(--on-pill); color: var(--pill); }
+.hint { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
 .water-grid {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -355,8 +392,8 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   align-items: center;
   font-size: 15px;
 }
-.water-grid input[type='range'] { width: 100%; accent-color: var(--white); }
-.water-grid input[type='checkbox'] { justify-self: start; width: 18px; height: 18px; accent-color: var(--white); }
+.water-grid input[type='range'] { width: 100%; accent-color: var(--on-pill); }
+.water-grid input[type='checkbox'] { justify-self: start; width: 18px; height: 18px; accent-color: var(--on-pill); }
 #fps { color: var(--muted); }
 
 /* ---------- 좁은 화면 ---------- */

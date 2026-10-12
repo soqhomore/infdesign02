@@ -1,6 +1,6 @@
 // 도트 수조판 개복치 수조: 입장, 채팅, 게임은 원래 사이트(main.js)와 같은 구조.
 // 개복치 그리기만 sunfish.js 대신 pool.js(셰이더)를 쓴다.
-import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, HUES, swatchColor } from './pool.js'
+import { addFish, updateFish, removeFish, fishIds, showBubble, setFainted, setNight, HUES, swatchColor } from './pool.js'
 import { connect, sendChat, sendGame, updatePresence } from './realtime.js'
 import { initGame, onGameMessage, onPresence } from './game.js'
 
@@ -178,3 +178,23 @@ for (const id of WATER_IDS) {
     savePrefs()
   })
 }
+
+// ---------- 밤 모드: 자동(오후엔 밤) · 낮 · 밤 ----------
+function applyTheme(instant = false) {
+  const mode = prefs.theme || 'auto'
+  const isNight = mode === 'night' || (mode === 'auto' && new Date().getHours() >= 12)
+  document.documentElement.dataset.theme = isNight ? 'night' : 'day'
+  setNight(isNight, instant)
+  for (const b of document.querySelectorAll('#theme-mode button')) {
+    b.setAttribute('aria-checked', String(b.dataset.mode === mode))
+  }
+}
+for (const b of document.querySelectorAll('#theme-mode button')) {
+  b.addEventListener('click', () => {
+    prefs.theme = b.dataset.mode
+    savePrefs()
+    applyTheme()
+  })
+}
+applyTheme(true)
+setInterval(applyTheme, 30000) // 자동일 때 정오가 지나면 알아서 바뀜
