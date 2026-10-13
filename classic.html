@@ -30,14 +30,14 @@
     <form class="chat-bar hidden" id="chat-form">
       <input id="chat-input" type="text" maxlength="60" placeholder="개복치에게 말 시키기…" autocomplete="off" />
       <button type="submit">보내기</button>
-      <button type="button" class="game-btn" id="game-btn">게임 하자</button>
+      <button type="button" class="game-btn" id="game-btn">같이 쉬자</button>
     </form>
 
     <!-- 게임 고르기 -->
     <div class="game-picker hidden" id="game-picker">
-      <p>어떤 게임 할까요?</p>
-      <button type="button" data-game="zone">멍때리기</button>
-      <button type="button" data-game="wipe">김 서린 창 닦기</button>
+      <p>뭐 하면서 쉴래요?</p>
+      <button type="button" data-game="zone">아무것도 하지 않기 대결하자</button>
+      <button type="button" data-game="wipe">시야를 넓히자</button>
       <button type="button" class="ghost" id="game-picker-cancel">취소</button>
     </div>
 
@@ -63,7 +63,7 @@
     <!-- 게임 진행 상황 (멍때리기 / 창 닦기 공용) -->
     <div class="zone-hud hidden" id="zone-hud">
       <div class="zone-hud-top">
-        <strong id="zone-hud-title">멍때리기</strong>
+        <strong id="zone-hud-title">아무것도 하지 않기 대결하자</strong>
         <span class="zone-hud-time" id="zone-hud-time">0:00</span>
         <span id="zone-hud-count"></span>
       </div>

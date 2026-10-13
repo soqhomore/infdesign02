@@ -5,8 +5,8 @@
 import { startWipe, onWipeMessage, onWipePresence } from './wipe.js'
 
 export const GAMES = {
-  zone: '멍때리기',
-  wipe: '김 서린 창 닦기',
+  zone: '아무것도 하지 않기 대결하자', // (예전 이름: 멍때리기)
+  wipe: '시야를 넓히자', // (예전 이름: 김 서린 창 닦기)
 }
 const INVITE_MS = 10000
 const GRACE_MS = 3000 // 멍때리기 준비 시간 (입력해도 기절 안 함)
@@ -175,8 +175,8 @@ function render() {
   if (current.phase === 'invite') {
     const isHost = current.hostId === me.id
     $('#game-banner-text').textContent = isHost
-      ? `${name} 하자고 했어요`
-      : `${subj(current.hostName)} ${name} 하재요`
+      ? `'${name}'고 했어요`
+      : `${subj(current.hostName)} '${name}'고 해요`
     $('#game-banner-sub').textContent = `${current.players.size}명 참여 · ${Math.ceil(left / 1000)}초 뒤 시작`
     $('#game-join').classList.toggle('hidden', current.joined)
     $('#game-joined').classList.toggle('hidden', !current.joined)
@@ -194,7 +194,7 @@ function startZone() {
   current.fainted = new Map()
   current.left = new Set()
   current.endTimer = null
-  $('#zone-hud-title').textContent = '멍때리기'
+  $('#zone-hud-title').textContent = GAMES.zone
   if (current.joined) {
     // 채팅을 치면 기절하니까 입력창을 숨긴다
     document.activeElement?.blur()

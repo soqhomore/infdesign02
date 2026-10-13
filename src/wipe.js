@@ -472,7 +472,7 @@ export function startWipe({ gameId, startAt, joined, players, meId, send, onFini
     left: false,
   }
 
-  $('#zone-hud-title').textContent = '김 서린 창 닦기'
+  $('#zone-hud-title').textContent = '시야를 넓히자'
   $('#zone-hud').classList.remove('hidden')
   if (config.timed) game.endTimer = setTimeout(() => finish(false), Math.max(0, startAt + DURATION_MS - Date.now()))
 

@@ -34,16 +34,16 @@
       <div class="game-banner-track"><div class="game-banner-bar" id="game-banner-bar"></div></div>
     </div>
 
-    <!-- 김 서린 창 닦기: 풍경 + 김 -->
+    <!-- 시야를 넓히자 (김 서린 창 닦기): 관람실 + 김 -->
     <section class="wipe-stage hidden" id="wipe-stage">
       <canvas class="wipe-scene" id="wipe-scene"></canvas>
       <canvas class="wipe-fog" id="wipe-fog"></canvas>
     </section>
 
-    <!-- 게임 진행 상황 (멍때리기 / 창 닦기) -->
+    <!-- 같이 쉬기 진행 상황 (아무것도 하지 않기 대결 / 시야를 넓히자) -->
     <div class="card zone-hud hidden" id="zone-hud">
       <div class="zone-hud-top">
-        <strong id="zone-hud-title">멍때리기</strong>
+        <strong id="zone-hud-title">아무것도 하지 않기 대결하자</strong>
         <span class="zone-hud-time" id="zone-hud-time">0:00</span>
         <span id="zone-hud-count"></span>
       </div>
@@ -53,9 +53,9 @@
     <!-- 게임 결과 -->
     <div class="game-result hidden" id="game-result"><strong id="game-result-text"></strong></div>
 
-    <!-- 멍때리기 순위 -->
-    <section class="card game-rank hidden" id="game-rank" aria-label="멍때리기 순위">
-      <p class="rank-label">멍때리기 순위</p>
+    <!-- 아무것도 하지 않기 대결 순위 -->
+    <section class="card game-rank hidden" id="game-rank" aria-label="아무것도 하지 않기 대결 순위">
+      <p class="rank-label">아무것도 하지 않기 대결 순위</p>
       <h2 id="game-rank-title"></h2>
       <ol id="game-rank-list"></ol>
       <button type="button" class="light" id="game-rank-close">닫기</button>
@@ -63,9 +63,10 @@
 
     <!-- 게임 고르기 -->
     <div class="card game-picker hidden" id="game-picker">
-      <p>어떤 게임 할까요?</p>
-      <button type="button" class="outline" data-game="zone">멍때리기</button>
-      <button type="button" class="outline" data-game="wipe">김 서린 창 닦기</button>
+      <p>뭐 하면서 쉴래요?</p>
+      <small class="picker-hint">능동적인 휴식은 휴식의 질을 높여요.</small>
+      <button type="button" class="outline" data-game="zone">아무것도 하지 않기 대결하자</button>
+      <button type="button" class="outline" data-game="wipe">시야를 넓히자</button>
       <button type="button" class="ghost" id="game-picker-cancel">취소</button>
     </div>
 
@@ -73,7 +74,7 @@
     <form class="chat hidden" id="chat-form" autocomplete="off">
       <input id="chat-input" type="text" maxlength="60" placeholder="개복치에게 말 시키기" />
       <button type="submit">보내기</button>
-      <button type="button" class="game-btn" id="game-btn"><i></i>게임 하자</button>
+      <button type="button" class="game-btn" id="game-btn"><i></i>같이 쉬자</button>
     </form>
 
     <!-- 상태 안내 -->

@@ -267,7 +267,8 @@ button.ghost { background: transparent; color: var(--muted); padding: 8px; }
   gap: 8px;
   width: min(300px, calc(100% - 32px));
 }
-.game-picker p { margin: 0 0 4px; text-align: center; font-size: 18px; }
+.game-picker p { margin: 0; text-align: center; font-size: 18px; }
+.picker-hint { margin: -2px 0 6px; text-align: center; font-size: 13px; color: var(--muted); }
 
 /* ---------- 게임 제안 배너 · 진행 상황 ---------- */
 .game-banner, .zone-hud { top: 80px; }
