@@ -65,7 +65,7 @@ $('#enter-form').addEventListener('submit', (e) => {
     onStatus(status) {
       if (status === 'offline') setStatus('.env에 Supabase 키를 넣으면 다른 사람과 함께 놀 수 있어요 (지금은 혼자 모드)')
       else if (status === 'SUBSCRIBED') setStatus('')
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setStatus('실시간 연결에 실패했어요. 키를 확인해 주세요.')
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setStatus('실시간 연결이 끊겼어요 · 다시 연결하는 중…')
     },
   })
 })

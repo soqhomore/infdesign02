@@ -9,6 +9,7 @@ export const hasKeys = Boolean(URL && KEY && !URL.includes('xxxx'))
 
 let channel = null
 let client = null
+let lastTracked = '' // 마지막으로 알린 내 정보 (바뀐 게 없으면 다시 안 보냄)
 
 // Supabase 클라이언트는 하나만 (키가 없으면 null → 혼자 모드)
 export function db() {
@@ -45,9 +46,13 @@ export function connect(me, { onSync, onChat, onGame, onVote, onStatus }) {
     .on('broadcast', { event: 'chat' }, ({ payload }) => onChat(payload))
     .on('broadcast', { event: 'game' }, ({ payload }) => onGame(payload))
     .on('broadcast', { event: 'vote-updated' }, ({ payload }) => onVote?.(payload))
-    .subscribe(async (status) => {
+    .subscribe(async (status, err) => {
+      // 실패 원인은 콘솔에 자세히 (err.cause에 서버가 준 이유가 들어 있는 경우가 많음)
+      if (err) console.warn('[realtime]', status, err)
       onStatus(status)
       if (status === 'SUBSCRIBED') {
+        // (다시) 연결되면 내 정보를 꼭 다시 알림
+        lastTracked = JSON.stringify(presenceOf(me))
         await channel.track(presenceOf(me))
       }
     })
@@ -64,8 +69,12 @@ export function sendGame(payload) {
 }
 
 // 닉네임·색을 바꿨을 때 다시 알리기 → 다른 사람 화면의 presence sync로 반영됨
+// Presence는 초당 보낼 수 있는 양이 정해져 있어서, 실제로 바뀐 게 있을 때만 보낸다
 export function updatePresence(me) {
   if (!channel) return
+  const next = JSON.stringify(presenceOf(me))
+  if (next === lastTracked) return
+  lastTracked = next
   channel.track(presenceOf(me))
 }
 
